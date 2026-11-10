@@ -1,0 +1,13 @@
+# Espaço Comum
+
+Shared decoration uses `gpt-image-1.5`, low quality, WebP and native transparent background. Production rejected `gpt-image-2` with HTTP 400 / `invalid_value` / `background`: "Transparent background is not supported for this model." Do not substitute a model without verifying transparency support on the deployed API. Provider errors are recorded with stage, status, code, parameter and request ID; credentials and raw input are not logged. The shared quota is released only for confirmed failures; uncertain paid outcomes remain reserved.
+
+The Images tab opens the shared mosaic with all, active, pending and inactive filters. The add-image flow opens in a dialog. Removal proposals can contain up to 50 active images in `common_proposal_assets`, with one justification, one ballot per person, and one outcome for the entire set. The original `asset_id` remains the lead image for compatibility with existing individual proposals. Assets already proposed for removal in a cycle cannot enter another set in the same cycle. Creation of a set is transactional; closure applies the result to all its items in one D1 batch.
+
+The public page is `/espaco-comum`. GET `/api/common-space/assets` is a public, deterministic, idempotent reconciliation operation: it seeds initial asset records once, closes only proposals whose stored deadline has passed, and returns the currently active image IDs and URLs. It accepts no user-controlled deadlines or outcomes. GET `/api/common-space` does the same and returns the public audit data.
+
+Run reconciliation at 00:00 America/Sao_Paulo on day 1 of each month. Request the assets endpoint, then read the public common-space endpoint to verify closed proposal status, vote snapshots, and active assets. No credentials or publication are needed. Normal visits also reconcile due decisions, so a delayed scheduler cannot allow voting beyond the deadline or expose a pending asset.
+
+Submissions (both inclusion and removal) are accepted only through day 15 in America/Sao_Paulo. Votes are authenticated, unique per proposal/account, mutable until the deadline, and publicly attributed. Ties and zero votes preserve the current asset state. Removal deactivates rather than deletes. Old assets, prompts, authors, decisions and votes remain in D1.
+
+One image generation is reserved atomically per account/calendar month, independently of avatar/post quotas. Confirmed validation or provider failure releases the quota; uncertain generation outcomes remain reserved to prevent duplicate paid calls. The subject is validated by the existing text model, and only a normalized subject name is included in the server-owned versioned image prompt. No image generation is called by a scheduled closure or a normal site visit.

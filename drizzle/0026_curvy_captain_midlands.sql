@@ -1,0 +1,1 @@
+ALTER TABLE `email_auth_tokens` ADD `code_hash` text;

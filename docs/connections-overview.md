@@ -1,0 +1,13 @@
+# Connections overview — 2026-11-01
+
+Header: activity leaderboard is a visible primary link; Common Space precedes notifications; Leave follows Profile. Connections remains discoverable without a completed profile. Home invitation and three explanatory steps use the requested copy.
+
+Connections opens with pending requests, established contacts and circles together. Contact menus can open a profile or preselect an eligible invitee when creating a circle. Circle menus expose navigation and owner management. Detailed received/sent lists contain only pending, seen or accepted interactions; all terminal statuses live in Archived, with type filters and pagination (30 received + 30 sent per archive page). Archived circles are also available there. Legacy history URLs remain supported.
+
+The selectable SVG graph shows the user's contacts and edges between those contacts, with optional circle membership edges. It only includes circles visible to this user. Level 1 means established contact; levels 2 and 3 require attended interactions on 2 and 5 separate dates. Manual archives, rejected/pending requests and repeated proximity pokes do not increase strength. New interaction events retain the explicit response action so archive and attendance are distinguishable.
+
+Recovery is limited to inspected legacy poke IDs through 45. Reciprocal mystery pokes, excluding declined/cancelled records, establish sorted unique contacts. Eight eligible pairs were found, one already present. Recovery inserts missing contacts, records audit events and archives their open legacy proximity requests without deleting history. It is atomic and safe to repeat across Worker isolates. The first deployed request runs recovery in the background; contact reads also await it.
+
+Preview diagnosis: its logged-out session could not see the conditional Connections link and was redirected to sign-in. It now has a public explanatory entry page while personal data still requires authentication. The local preview database was empty; all existing SQL was applied to that empty local database. No production accounts were copied. A temporary local-only fixture page verified real database network queries, contact actions, circle map toggle and node selection; that route was removed before packaging.
+
+Validation: new recovery/strength tests plus existing upload, post-image and Common Space tests pass. Production build passes. Standalone TypeScript still reports the pre-existing Cloudflare ambient type and unrelated guide/role errors. Live recovery is verified separately after deployment by reading the connections table. Version 59 remains a source rollback point; recovered data is retained as requested.
