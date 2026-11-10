@@ -1,0 +1,208 @@
+[
+  {
+    "id": "acervo-irara",
+    "element": "Irara",
+    "url": "/nature/irara-isolado.webp",
+    "prompt": "Use case: photorealistic-natural. Asset type: isolated transparent nature cutout for Praça, a Brazilian community website. Style: lifelike natural-history photography, biologically plausible anatomy, refined soft daylight, crisp natural textures and vibrant realistic colors, no painterly or cartoon styling. Show exactly ONE subject, complete silhouette with all extremities in frame and modest transparent margin. Truly transparent alpha background. No scenery, ground patch, cast shadow floor, text, watermark, frame, logo, interface, extra species, or decorative objects. This asset must remain separable from every other website element. One Brazilian tayra, Eira barbara (irara), NOT an otter or fox. Dark brown slender elongated mustelid body, lighter gray-brown head, rounded ears, yellowish throat patch, long bushy dark tail. Relaxed side-on walking pose facing right, all four paws and full tail visible. Horizontal level paw baseline near bottom. No vegetation or rocks.",
+    "category": "animal",
+    "route": "terrestrial",
+    "placement": {
+      "support": "ground",
+      "spots": [
+        "header",
+        "title",
+        "map",
+        "card",
+        "button"
+      ],
+      "size": "small",
+      "motion": "stroll",
+      "baseline": 0
+    }
+  },
+  {
+    "id": "acervo-jabuti",
+    "element": "Jabuti",
+    "url": "/nature/jabuti-isolado.webp",
+    "prompt": "Use case: photorealistic-natural. Asset type: isolated transparent nature cutout for Praça, a Brazilian community website. Style: lifelike natural-history photography, biologically plausible anatomy, refined soft daylight, crisp natural textures and vibrant realistic colors, no painterly or cartoon styling. Show exactly ONE subject, complete silhouette with all extremities in frame and modest transparent margin. Truly transparent alpha background. No scenery, ground patch, cast shadow floor, text, watermark, frame, logo, interface, extra species, or decorative objects. This asset must remain separable from every other website element. One red-footed tortoise, Chelonoidis carbonarius, terrestrial Brazilian jabuti-piranga, NOT an aquatic turtle. High dark domed shell with golden-yellow scute centers, realistic red-orange scales on stout legs and head. Three-quarter side-on slow walking pose facing right, complete shell, head and all visible legs fully framed. Paws rest on a level imaginary horizontal baseline. No water or plants.",
+    "category": "animal",
+    "route": "terrestrial",
+    "placement": {
+      "support": "ground",
+      "spots": [
+        "header",
+        "title",
+        "map",
+        "card",
+        "button"
+      ],
+      "size": "small",
+      "motion": "stroll",
+      "baseline": 0
+    }
+  },
+  {
+    "id": "acervo-beija-flor",
+    "element": "Beija-flor",
+    "url": "/nature/beija-flor-isolado.webp",
+    "prompt": "Use case: photorealistic-natural. Asset type: isolated transparent nature cutout for Praça, a Brazilian community website. Style: lifelike natural-history photography, biologically plausible anatomy, refined soft daylight, crisp natural textures and vibrant realistic colors, no painterly or cartoon styling. Show exactly ONE subject, complete silhouette with all extremities in frame and modest transparent margin. Truly transparent alpha background. No scenery, ground patch, cast shadow floor, text, watermark, frame, logo, interface, extra species, or decorative objects. This asset must remain separable from every other website element. One isolated Brazilian violet-capped woodnymph hummingbird, Thalurania glaucopis, hovering in side view facing right, slender long dark bill, iridescent emerald green feathers and violet-blue crown, both complete wings visible and naturally extended in flight, no motion blur. Bird ONLY: absolutely no flowers, leaves or branches. All wing tips, beak and tail fully inside frame. Precisely extracted feather edges, no hazy halo.",
+    "category": "animal",
+    "route": "aerial",
+    "placement": {
+      "support": "floating",
+      "spots": [
+        "margin",
+        "title",
+        "header"
+      ],
+      "size": "small",
+      "motion": "sway",
+      "baseline": 0
+    }
+  },
+  {
+    "id": "acervo-jacana",
+    "element": "Jaçanã",
+    "url": "/nature/jacana-isolado.webp",
+    "prompt": "Use case: photorealistic-natural. Asset type: isolated transparent nature cutout for Praça, a Brazilian community website. Style: lifelike natural-history photography, biologically plausible anatomy, refined soft daylight, crisp natural textures and vibrant realistic colors, no painterly or cartoon styling. Show exactly ONE subject, complete silhouette with all extremities in frame and modest transparent margin. Truly transparent alpha background. No scenery, ground patch, cast shadow floor, text, watermark, frame, logo, interface, extra species, or decorative objects. This asset must remain separable from every other website element. One isolated wattled jacana, Jacana jacana, Brazilian jaçanã. Side view facing right, chestnut body, black head and neck, yellow bill and red frontal shield. Standing in a light stepping pose with its exceptionally long slender toes fully visible and completely inside frame, anatomically plausible feet. Bird ONLY: no lily pad, leaf, pond, water or other support. Crisp cutout without halo.",
+    "category": "animal",
+    "route": "aquatic",
+    "placement": {
+      "support": "perch",
+      "spots": [
+        "card"
+      ],
+      "size": "small",
+      "motion": "still",
+      "baseline": 0
+    }
+  },
+  {
+    "id": "acervo-borboleta",
+    "element": "Borboleta-azul",
+    "url": "/nature/borboleta-isolado.webp",
+    "prompt": "Use case: photorealistic-natural. Asset type: isolated transparent nature cutout for Praça, a Brazilian community website. Style: lifelike natural-history photography, biologically plausible anatomy, refined soft daylight, crisp natural textures and vibrant realistic colors, no painterly or cartoon styling. Show exactly ONE subject, complete silhouette with all extremities in frame and modest transparent margin. Truly transparent alpha background. No scenery, ground patch, cast shadow floor, text, watermark, frame, logo, interface, extra species, or decorative objects. This asset must remain separable from every other website element. One isolated Brazilian blue morpho butterfly, Morpho menelaus, in an elegant three-quarter view with both entire wings spread, bright naturally iridescent blue upper wings with dark fine margins. Show complete delicate antennae, body, legs and wing tips. Butterfly ONLY: no flower, leaf, stem or background. Sharp natural macro photography, no blur, no hazy halo.",
+    "category": "animal",
+    "route": "aerial",
+    "placement": {
+      "support": "floating",
+      "spots": [
+        "margin",
+        "title",
+        "header"
+      ],
+      "size": "small",
+      "motion": "sway",
+      "baseline": 0
+    }
+  },
+  {
+    "id": "acervo-tucano",
+    "element": "Tucano-toco",
+    "url": "/nature/tucano-isolado.webp",
+    "prompt": "Use case: photorealistic-natural. Asset type: isolated transparent nature cutout for Praça, a Brazilian community website. Style: lifelike natural-history photography, biologically plausible anatomy, refined soft daylight, crisp natural textures and vibrant realistic colors, no painterly or cartoon styling. Show exactly ONE subject, complete silhouette with all extremities in frame and modest transparent margin. Truly transparent alpha background. No scenery, ground patch, cast shadow floor, text, watermark, frame, logo, interface, extra species, or decorative objects. This asset must remain separable from every other website element. One isolated toco toucan, Ramphastos toco, standing in side view facing right, full enormous orange-yellow bill with black tip, black body, white throat, blue skin around eye, complete tail and both feet visible. Feet in a natural resting grip for a thin imaginary horizontal perch, but show NO branch, fruit, leaf, tree or prop. Clean alpha edges with no haze, all anatomy fully within frame.",
+    "category": "animal",
+    "route": "perches",
+    "placement": {
+      "support": "perch",
+      "spots": [
+        "header",
+        "title",
+        "card"
+      ],
+      "size": "small",
+      "motion": "still",
+      "baseline": 0
+    }
+  },
+  {
+    "id": "acervo-mico",
+    "element": "Mico-leão-dourado · isolado",
+    "url": "/nature/mico-isolado.webp",
+    "prompt": "Use case: photorealistic-natural. Asset type: isolated transparent nature cutout for Praça, a Brazilian community website. Style: lifelike natural-history photography, biologically plausible anatomy, refined soft daylight, crisp natural textures and vibrant realistic colors, no painterly or cartoon styling. Show exactly ONE subject, complete silhouette with all extremities in frame and modest transparent margin. Truly transparent alpha background. No scenery, ground patch, cast shadow floor, text, watermark, frame, logo, interface, extra species, or decorative objects. This asset must remain separable from every other website element. One isolated golden lion tamarin, Leontopithecus rosalia, natural orange-gold fur, small dark face and distinctive golden mane. Three-quarter side pose facing right, crouching with all hands and feet visible as though perched on an imaginary low horizontal ledge. Long complete curved tail remains inside frame, not cut off. Animal ONLY: no branch, fruit, foliage or prop. Realistic small primate proportions, crisp fur alpha without diffuse halo.",
+    "category": "animal",
+    "route": "perches",
+    "placement": {
+      "support": "perch",
+      "spots": [
+        "title",
+        "card"
+      ],
+      "size": "small",
+      "motion": "still",
+      "baseline": 0
+    }
+  },
+  {
+    "id": "acervo-vitoria-regia",
+    "element": "Vitória-régia · isolada",
+    "url": "/nature/vitoria-regia-isolado.webp",
+    "prompt": "Use case: photorealistic-natural. Asset type: isolated transparent nature cutout for Praça, a Brazilian community website. Style: lifelike natural-history photography, biologically plausible anatomy, refined soft daylight, crisp natural textures and vibrant realistic colors, no painterly or cartoon styling. Show exactly ONE subject, complete silhouette with all extremities in frame and modest transparent margin. Truly transparent alpha background. No scenery, ground patch, cast shadow floor, text, watermark, frame, logo, interface, extra species, or decorative objects. This asset must remain separable from every other website element. One isolated Brazilian Victoria amazonica aquatic plant arrangement: one mature round floating lily pad with its characteristic upturned rim and radial veins, plus one attached white-to-soft-pink flower. Low three-quarter oblique view, broad horizontal silhouette, realistically waxy leaf texture. Plant ONLY, no bird, insects, pond, ripples, water surface, reflections or background. Leaf and flower fully visible on transparent alpha, suitable as a fixed botanical composition.",
+    "category": "plant",
+    "route": "fixed",
+    "placement": {
+      "support": "corner",
+      "spots": [
+        "margin",
+        "card"
+      ],
+      "size": "medium",
+      "motion": "still",
+      "baseline": 0
+    }
+  },
+  {
+    "id": "acervo-heliconia",
+    "element": "Helicônia · isolada",
+    "url": "/nature/heliconia-isolado.webp",
+    "prompt": "Use case: photorealistic-natural. Asset type: isolated transparent nature cutout for Praça, a Brazilian community website. Style: lifelike natural-history photography, biologically plausible anatomy, refined soft daylight, crisp natural textures and vibrant realistic colors, no painterly or cartoon styling. Show exactly ONE subject, complete silhouette with all extremities in frame and modest transparent margin. Truly transparent alpha background. No scenery, ground patch, cast shadow floor, text, watermark, frame, logo, interface, extra species, or decorative objects. This asset must remain separable from every other website element. One isolated Brazilian tropical Heliconia rostrata plant specimen with one graceful hanging red-and-yellow lobster-claw inflorescence and two recognizable green leaves connected to its stem. Whole botanical silhouette visible, realistic surface and fine leaf veins, no pot, soil, roots, bird, butterfly, other species or scenery. Natural upright botanical composition for a website corner, transparent alpha with crisp edges.",
+    "category": "plant",
+    "route": "fixed",
+    "placement": {
+      "support": "corner",
+      "spots": [
+        "margin",
+        "card"
+      ],
+      "size": "medium",
+      "motion": "still",
+      "baseline": 0
+    }
+  },
+  {
+    "id": "acervo-bromelia",
+    "element": "Bromélia · isolada",
+    "url": "/nature/bromelia-isolado.webp",
+    "prompt": "Use case: photorealistic-natural. Asset type: isolated transparent nature cutout for Praça, a Brazilian community website. Style: lifelike natural-history photography, biologically plausible anatomy, refined soft daylight, crisp natural textures and vibrant realistic colors, no painterly or cartoon styling. Show exactly ONE subject, complete silhouette with all extremities in frame and modest transparent margin. Truly transparent alpha background. No scenery, ground patch, cast shadow floor, text, watermark, frame, logo, interface, extra species, or decorative objects. This asset must remain separable from every other website element. One isolated Brazilian tropical bromeliad, a Guzmania lingulata-like rosette with natural curved green strap leaves and a bright red central inflorescence. Complete rosette in three-quarter view, vivid but lifelike colors and botanical textures, base neatly visible. Plant ONLY: no butterfly, insect, pot, soil, rock, droplets in air or other scenery. Transparent alpha and clean edges, suitable as a fixed botanical anchor in a website corner.",
+    "category": "plant",
+    "route": "fixed",
+    "placement": {
+      "support": "corner",
+      "spots": [
+        "margin",
+        "card"
+      ],
+      "size": "medium",
+      "motion": "still",
+      "baseline": 0
+    }
+  },
+  {
+    "id": "acervo-capim",
+    "element": "Capim do Cerrado · apoio terrestre",
+    "url": "/nature/capim-cerrado.webp",
+    "prompt": "Built-in imagegen edit of original wolf reference: isolate three low realistic Cerrado grass tufts, green and straw gold, subtle purple flowers, transparent background, no wolf or soil. Fixed reusable terrestrial habitat.",
+    "category": "habitat",
+    "route": "terrestrial-support",
+    "placement": {
+      "support": "corner",
+      "spots": [
+        "card",
+        "margin"
+      ],
+      "size": "small",
+      "motion": "still",
+      "baseline": 0
+    }
+  }
+]
