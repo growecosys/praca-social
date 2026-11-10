@@ -1,0 +1,2 @@
+import type { NatureSpot } from "../lib/nature-placement";
+export default function NatureSpot({kind,className="",showcase=false,scene,assets}:{kind:NatureSpot;className?:string;showcase?:boolean;scene?:string;assets?:string[]}){return <div data-nature-spot={kind} data-nature-scene={scene||(showcase?"hero":"")} data-nature-assets={assets?.join(",")} data-nature-showcase={showcase||undefined} aria-hidden="true" className={`nature-spot ${showcase?"nature-showcase":""} ${className}`}/>;}

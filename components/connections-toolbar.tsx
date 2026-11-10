@@ -1,0 +1,4 @@
+"use client";
+import { Archive } from "lucide-react";
+import { useState } from "react";
+export default function ConnectionsToolbar({ pending }: { pending: number }) { const [busy, setBusy] = useState(false); async function archiveAll() { setBusy(true); const response = await fetch("/api/pokes", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "archive_all" }) }); if (response.ok) window.location.reload(); else setBusy(false); } return pending ? <button type="button" onClick={archiveAll} disabled={busy} className="flex items-center gap-2 border border-[#244e35] px-4 py-2 text-sm font-semibold text-[#244e35] disabled:opacity-50"><Archive size={15} />{busy ? "Arquivando..." : `Arquivar ${pending} pendente${pending === 1 ? "" : "s"}`}</button> : null; }

@@ -1,0 +1,4 @@
+import { and,eq } from "drizzle-orm";
+import {getDb} from "../db";
+import {circles,circleMembers} from "../db/schema";
+export default async function ProfileCircles({userId}:{userId:string}){const rows=await getDb().select({id:circles.id,name:circles.name,emblem:circles.emblem,status:circles.status}).from(circles).innerJoin(circleMembers,eq(circleMembers.circleId,circles.id)).where(and(eq(circleMembers.userId,userId),eq(circleMembers.status,"active"),eq(circles.visibility,"public")));return <section className="mt-10"><h2 className="font-serif text-3xl">Círculos na Praça</h2><div className="mt-4 flex flex-wrap gap-3">{rows.map(c=><a key={c.id} href={`/circulos/${c.id}`} className="border p-3">{c.emblem} {c.name}{c.status==="completed"?" ✓":""}</a>)}</div>{!rows.length&&<p className="mt-3 text-sm">Ainda sem círculos públicos.</p>}</section>;}
