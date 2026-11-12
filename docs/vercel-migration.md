@@ -10,7 +10,7 @@ The code port is done: the app builds with `next build`, queries run on Postgres
 | D1 export → Postgres, with reconciliation  | `scripts/import-sqlite.mjs`                  | `tests/import-sqlite.test.mjs`   |
 | Legacy reciprocal-poke recovery            | `scripts/recover-legacy-connections.mjs`     | `tests/legacy-recovery.test.mjs` |
 | R2 → Blob transfer with manifest and verify | `scripts/transfer-r2-to-blob.mjs`           | `tests/transfer-r2.test.mjs`     |
-| Hourly stories tick, monthly Espaço Comum  | `vercel.json` crons                          | endpoints are idempotent GETs    |
+| Daily stories tick, monthly Espaço Comum   | `vercel.json` crons                          | endpoints are idempotent GETs    |
 
 The old SQLite migrations are kept in `tests/fixtures/sqlite-migrations/` for reference, rollback and as the fixture for the importer test.
 
@@ -56,3 +56,4 @@ Keep the old source, D1 database and R2 bucket. Before the new site takes writes
 - `CURRENT_TIMESTAMP` in raw SQL is translated to the app's text timestamp (`lib/sql-dialect.ts`).
 - `LIKE` in user search is `ILIKE` (SQLite's `LIKE` ignored case).
 - Image function duration on Vercel depends on the plan; measure generated-image routes before relying on them.
+- Cron on the Hobby plan is limited to once per day; an hourly expression makes the deployment fail before the build starts.

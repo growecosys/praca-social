@@ -43,7 +43,7 @@ npm run dev                  # http://localhost:3000
 - Timestamps are text in `YYYY-MM-DD HH:MM:SS` UTC and flags are 0/1 integers, as before. Millisecond epochs are `bigint`.
 - `lib/env.ts` exposes `env.DB` and `env.BUCKET` (a Blob-backed store, `lib/blob-bucket.ts`). Object keys are Blob pathnames, so `/media/<key>` and `/avatar/<id>` URLs are unchanged.
 - `tests/postgres-dialect.test.mjs` extracts every SQL statement from the source and `PREPARE`s it against the real schema. Run it after touching any query.
-- Scheduled work is configured in `vercel.json`: the hourly Histórias tick and the monthly Espaço Comum reconciliation (00:00 America/Sao_Paulo on day 1). Hourly cron needs a Vercel plan that supports it.
+- Scheduled work is configured in `vercel.json`: a daily Histórias tick and the monthly Espaço Comum reconciliation (00:00 America/Sao_Paulo on day 1). These fit the Hobby plan (daily at most). The tick is also advanced when people open the game, so on a Pro plan change `0 3 * * *` to `0 * * * *` for hourly precision.
 
 ## Moving production data
 

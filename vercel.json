@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "crons": [
-    { "path": "/api/historias/tick", "schedule": "0 * * * *" },
+    { "path": "/api/historias/tick", "schedule": "0 3 * * *" },
     { "path": "/api/common-space/assets", "schedule": "0 3 1 * *" }
   ]
 }
