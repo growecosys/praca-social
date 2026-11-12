@@ -60,7 +60,7 @@ test("recovery accepts either selected answer, hides account questions, caps con
   globalThis.__recoveryDb = db;
   const api = await load("app/api/auth/recover/route.ts", (s) =>
     s.replace(/^import\b[^;]*;/gm, (line) =>
-      line.includes("cloudflare")
+      line.includes("lib/env")
         ? "const env={DB:globalThis.__recoveryDb};"
         : line.includes("praca-auth")
           ? "const {hashSecret,normalizeRecoveryAnswer,verifySecret}=globalThis.__recoveryAuth;const clearSession=async()=>{};"

@@ -1,6 +1,6 @@
 import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
 import { getDb } from "../../../db";
-import { notifications } from "../../../db/schema";
+import { notifications, nowText } from "../../../db/schema";
 import { requirePracaUser } from "../../../lib/praca-auth";
 
 export async function GET() {
@@ -43,12 +43,12 @@ export async function POST(request: Request) {
   if (payload.action === "read_all")
     await db
       .update(notifications)
-      .set({ readAt: sql`CURRENT_TIMESTAMP` })
+      .set({ readAt: nowText })
       .where(and(eq(notifications.recipientId, user.id), isNull(notifications.readAt)));
   else if (Number.isInteger(payload.id))
     await db
       .update(notifications)
-      .set({ readAt: sql`CURRENT_TIMESTAMP` })
+      .set({ readAt: nowText })
       .where(
         and(
           eq(notifications.id, Number(payload.id)),

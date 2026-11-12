@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env } from "../../../lib/env";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ key: string }> }) {
   const { key } = await params;

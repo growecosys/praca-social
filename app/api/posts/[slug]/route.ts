@@ -1,5 +1,5 @@
 import { inlinePlainText } from "../../../../lib/inline-text";
-import { env } from "cloudflare:workers";
+import { env } from "../../../../lib/env";
 import { normalizePostBlocks, mentionStatements } from "../../../../lib/post-mentions";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { requirePracaUser } from "../../../../lib/praca-auth";

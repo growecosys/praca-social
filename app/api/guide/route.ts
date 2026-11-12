@@ -1,6 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "../../../db";
-import { activityEvents, assistantUsage, posts, referrals } from "../../../db/schema";
+import { activityEvents, assistantUsage, posts, referrals, nowText } from "../../../db/schema";
 import { GUIDE_ACTIONS, GUIDE_INSTRUCTIONS, type GuideAction } from "../../../lib/guide-knowledge";
 import { getPracaUser } from "../../../lib/praca-auth";
 import { jsonWithVisitor, visitorFromRequest } from "../../../lib/visitor";
@@ -125,7 +125,7 @@ export async function POST(request: Request) {
         : null,
     };
 
-    const { env } = await import("cloudflare:workers");
+    const { env } = await import("../../../lib/env");
     const apiKey = (env as unknown as { OPENAI_API_KEY?: string }).OPENAI_API_KEY;
     if (!apiKey)
       return jsonWithVisitor({ error: "O chat ainda não foi configurado." }, visitor, {
@@ -178,7 +178,7 @@ export async function POST(request: Request) {
           messages: sql`${assistantUsage.messages} + 1`,
           inputTokens: sql`${assistantUsage.inputTokens} + ${inputTokens}`,
           outputTokens: sql`${assistantUsage.outputTokens} + ${outputTokens}`,
-          updatedAt: sql`CURRENT_TIMESTAMP`,
+          updatedAt: nowText,
         })
         .where(eq(assistantUsage.id, usage.id));
     } else {

@@ -51,7 +51,10 @@ function setup() {
   };
   return { d, db };
 }
-const migration = await readFile("drizzle/0031_absent_sebastian_shaw.sql", "utf8");
+const migration = await readFile(
+  "tests/fixtures/sqlite-migrations/0031_absent_sebastian_shaw.sql",
+  "utf8",
+);
 test("projects have valid discrete parts, consume materials once, and dismantling recovers the same pieces", () => {
   const original = game.initialGame(),
     s = step(original, craft);

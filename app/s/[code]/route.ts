@@ -1,6 +1,6 @@
 import { eq, sql } from "drizzle-orm";
 import { getDb } from "../../../db";
-import { posts, shareLinks, shareVisits } from "../../../db/schema";
+import { posts, shareLinks, shareVisits, nowText } from "../../../db/schema";
 import { visitorFromRequest } from "../../../lib/visitor";
 import { getPracaUser } from "../../../lib/praca-auth";
 
@@ -30,7 +30,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ code
       .update(shareVisits)
       .set({
         visits: sql`${shareVisits.visits} + 1`,
-        lastSeenAt: sql`CURRENT_TIMESTAMP`,
+        lastSeenAt: nowText,
         userId: user?.id || existing.userId,
       })
       .where(eq(shareVisits.id, existing.id));

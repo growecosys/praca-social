@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { env } from "cloudflare:workers";
+import { env } from "./env";
 import { getDb } from "../db";
 import { avatarGenerations } from "../db/schema";
 

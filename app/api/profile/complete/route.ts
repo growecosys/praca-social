@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { getDb } from "../../../../db";
-import { activityEvents, referrals, roleGenerations, users } from "../../../../db/schema";
+import { activityEvents, referrals, roleGenerations, users, nowText } from "../../../../db/schema";
 import { requirePracaUser } from "../../../../lib/praca-auth";
 import { generateProfileIdentity } from "../../../../lib/profile-identity";
 
@@ -57,12 +57,12 @@ export async function POST(request: Request) {
       avatarJson,
       profileComplete: true,
       generationsUsed: 1,
-      updatedAt: sql`CURRENT_TIMESTAMP`,
+      updatedAt: nowText,
     })
     .where(sql`${users.id} = ${user.id}`);
   await db
     .update(referrals)
-    .set({ qualifiedAt: sql`CURRENT_TIMESTAMP` })
+    .set({ qualifiedAt: nowText })
     .where(sql`${referrals.invitedUserId} = ${user.id} AND ${referrals.qualifiedAt} IS NULL`);
   await db.insert(roleGenerations).values({
     id: generationId,
@@ -74,7 +74,7 @@ export async function POST(request: Request) {
     mappingJson: JSON.stringify(identity.mapping),
     explanation: identity.explanation,
     status: "applied",
-    appliedAt: sql`CURRENT_TIMESTAMP`,
+    appliedAt: nowText,
   });
   await db.insert(activityEvents).values({
     userId: user.id,

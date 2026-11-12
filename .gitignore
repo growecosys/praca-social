@@ -1,9 +1,11 @@
 node_modules
 dist
 .next
-.wrangler
-.sites-runtime
 .env*.local
 .env.local
 .vercel
 *.tsbuildinfo
+next-env.d.ts
+transfer-manifest.jsonl
+*.sqlite
+praca-d1.sql

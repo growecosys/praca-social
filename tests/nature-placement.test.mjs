@@ -38,11 +38,27 @@ test("image generation saves a resumable draft, submission validates ownership a
   d.exec(
     "CREATE TABLE users(id TEXT PRIMARY KEY,username TEXT,display_name TEXT); INSERT INTO users VALUES ('a','ana','Ana'),('b','beto','Beto'); CREATE TABLE activity_events(user_id TEXT,action TEXT,entity_type TEXT,entity_id TEXT,metadata_json TEXT)",
   );
-  d.exec(await readFile(new URL("../drizzle/0023_common_space.sql", import.meta.url), "utf8"));
   d.exec(
-    await readFile(new URL("../drizzle/0024_common_proposal_assets.sql", import.meta.url), "utf8"),
+    await readFile(
+      new URL("../tests/fixtures/sqlite-migrations/0023_common_space.sql", import.meta.url),
+      "utf8",
+    ),
   );
-  d.exec(await readFile(new URL("../drizzle/0023_boring_blizzard.sql", import.meta.url), "utf8"));
+  d.exec(
+    await readFile(
+      new URL(
+        "../tests/fixtures/sqlite-migrations/0024_common_proposal_assets.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
+  d.exec(
+    await readFile(
+      new URL("../tests/fixtures/sqlite-migrations/0023_boring_blizzard.sql", import.meta.url),
+      "utf8",
+    ),
+  );
   const db = {
     prepare(sql) {
       const bound = (args) => ({
@@ -106,7 +122,7 @@ test("image generation saves a resumable draft, submission validates ownership a
         return "const {validatePlacement}=globalThis.__placementHelpers;";
       if (line.includes("common-validation"))
         return "class CommonApiError extends Error{};const validateCommonElement=globalThis.__natureTest.validate,generateCommonImage=globalThis.__natureTest.generate;";
-      if (line.includes("cloudflare:workers")) return "const {env}=globalThis.__natureTest;";
+      if (/lib\/env["']/.test(line)) return "const {env}=globalThis.__natureTest;";
       if (line.includes("praca-auth"))
         return "const requirePracaUser=globalThis.__natureTest.auth,getPracaUser=globalThis.__natureTest.user;";
       if (line.includes("common-space"))

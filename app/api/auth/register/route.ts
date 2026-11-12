@@ -1,4 +1,5 @@
-import { env } from "cloudflare:workers";
+import { clientIp } from "../../../../lib/client-ip";
+import { env } from "../../../../lib/env";
 import { cookies } from "next/headers";
 import { eq } from "drizzle-orm";
 import { getDb } from "../../../../db";
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
   } catch {
     return Response.json({ error: "Dados inválidos." }, { status: 400 });
   }
-  const ip = request.headers.get("cf-connecting-ip") || "unknown";
+  const ip = clientIp(request);
   if (!(await takeEmailLimit(env.DB, "register-ip:" + ip, 10)))
     return Response.json({ error: "Muitas tentativas. Aguarde alguns minutos." }, { status: 429 });
   let account;

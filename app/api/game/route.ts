@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env } from "../../../lib/env";
 import { getPracaUser } from "../../../lib/praca-auth";
 import { GameError } from "../../../lib/after-hours";
 import { readGame, mutateGame } from "../../../lib/after-hours-store";

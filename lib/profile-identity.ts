@@ -162,7 +162,7 @@ export async function generateProfileIdentity(
 ) {
   let identity = fallback(answers);
   try {
-    const { env } = await import("cloudflare:workers");
+    const { env } = await import("./env");
     const key = (env as any).OPENAI_API_KEY;
     if (!key) return identity;
     const schema = {
@@ -350,7 +350,7 @@ export async function reconstructLegacyIdentity(roleTitle: string, answers: stri
     colors: ["#244e35", "#f0c64b", "#f5f1e8"],
   };
   try {
-    const { env } = await import("cloudflare:workers");
+    const { env } = await import("./env");
     const key = (env as any).OPENAI_API_KEY;
     if (!key) return fallbackIdentity;
     const schema = {

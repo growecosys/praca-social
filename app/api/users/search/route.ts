@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env } from "../../../../lib/env";
 import { getPracaUser } from "../../../../lib/praca-auth";
 export async function GET(request: Request) {
   if (!(await getPracaUser()))
@@ -9,7 +9,7 @@ export async function GET(request: Request) {
     .slice(0, 60)
     .replace(/[\\%_]/g, "\\$&");
   const rows = await env.DB.prepare(
-    "SELECT id,username,display_name FROM users WHERE deleted_at IS NULL AND profile_complete=1 AND (username LIKE ? ESCAPE '\\' OR display_name LIKE ? ESCAPE '\\') ORDER BY username LIMIT 8",
+    "SELECT id,username,display_name FROM users WHERE deleted_at IS NULL AND profile_complete=1 AND (username ILIKE ? ESCAPE '\\' OR display_name ILIKE ? ESCAPE '\\') ORDER BY username LIMIT 8",
   )
     .bind(q + "%", "%" + q + "%")
     .all();

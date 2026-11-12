@@ -41,7 +41,7 @@ test("password registration stores pending email privately; only verified addres
   d.exec(
     `CREATE TABLE users(id TEXT PRIMARY KEY,username TEXT UNIQUE,display_name TEXT,secret_hash TEXT,secret_salt TEXT,deleted_at TEXT);CREATE TABLE profile_aliases(username TEXT PRIMARY KEY,user_id TEXT);CREATE TABLE account_emails(user_id TEXT PRIMARY KEY,email TEXT UNIQUE,verified_at TEXT);CREATE TABLE activity_events(user_id TEXT,action TEXT,entity_type TEXT,entity_id TEXT);`,
   );
-  d.exec(await readFile("drizzle/0025_blue_blockbuster.sql", "utf8"));
+  d.exec(await readFile("tests/fixtures/sqlite-migrations/0025_blue_blockbuster.sql", "utf8"));
   const db = adapter(d),
     hash = async () => ({ hash: "hashed-password", salt: "unique-salt" }),
     normalize = (s) => s.trim();

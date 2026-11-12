@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env } from "../lib/env";
 import { readRpg } from "../lib/rpg-store";
 import { SKILLS, skillKeys, publicRpg } from "../lib/rpg";
 export default async function RpgProfile({ userId, owner }: { userId: string; owner: boolean }) {

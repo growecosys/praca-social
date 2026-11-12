@@ -1,6 +1,6 @@
 import { and, or, eq, sql } from "drizzle-orm";
 import { getDb } from "../../../../../db";
-import { activityEvents, pokes, posts, users } from "../../../../../db/schema";
+import { activityEvents, pokes, posts, users, nowText } from "../../../../../db/schema";
 import { requirePracaUser } from "../../../../../lib/praca-auth";
 import { notify } from "../../../../../lib/notifications";
 import { connectedPeople } from "../../../../../lib/connections";
@@ -125,7 +125,7 @@ export async function POST(
       kind,
       targetPostId,
       status: "pending",
-      expiresAt: sql`datetime('now', '+7 days')`,
+      expiresAt: sql`to_char(timezone('utc', now()) + interval '7 days', 'YYYY-MM-DD HH24:MI:SS')`,
     })
     .returning({ id: pokes.id });
   await Promise.all([

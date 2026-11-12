@@ -1,10 +1,10 @@
 import { inlinePlainText } from "../../../lib/inline-text";
-import { env } from "cloudflare:workers";
+import { env } from "../../../lib/env";
 import { normalizePostBlocks, mentionStatements } from "../../../lib/post-mentions";
 import { and, eq, sql } from "drizzle-orm";
 import { requirePracaUser } from "../../../lib/praca-auth";
 import { getDb } from "../../../db";
-import { pokes, posts } from "../../../db/schema";
+import { pokes, posts, nowText } from "../../../db/schema";
 
 function baseSlug(value: string) {
   return (
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
     ]);
     await db
       .update(pokes)
-      .set({ status: "completed", resolvedAt: sql`CURRENT_TIMESTAMP` })
+      .set({ status: "completed", resolvedAt: nowText })
       .where(
         and(
           eq(pokes.recipientId, user.id),

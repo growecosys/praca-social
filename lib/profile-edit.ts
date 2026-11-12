@@ -19,7 +19,7 @@ export async function saveProfileEdit(db: any, user: any, input: unknown) {
   const claim = (username: string) =>
     db
       .prepare(
-        "INSERT INTO profile_aliases(username,user_id) VALUES (?,?) ON CONFLICT(username) DO UPDATE SET user_id=CASE WHEN user_id=excluded.user_id THEN user_id ELSE NULL END",
+        "INSERT INTO profile_aliases(username,user_id) VALUES (?,?) ON CONFLICT(username) DO UPDATE SET user_id=CASE WHEN profile_aliases.user_id=excluded.user_id THEN profile_aliases.user_id ELSE NULL END",
       )
       .bind(username, user.id);
   try {

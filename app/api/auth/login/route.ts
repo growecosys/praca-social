@@ -1,4 +1,5 @@
-import { env } from "cloudflare:workers";
+import { clientIp } from "../../../../lib/client-ip";
+import { env } from "../../../../lib/env";
 import { createSession, clearSession, verifySecret } from "../../../../lib/praca-auth";
 import { findPasswordAccount } from "../../../../lib/password-access";
 import { takeEmailLimit } from "../../../../lib/email-access";
@@ -14,7 +15,7 @@ export async function POST(request: Request) {
   } catch {
     return Response.json({ error: "Dados inválidos." }, { status: 400 });
   }
-  const ip = request.headers.get("cf-connecting-ip") || "unknown";
+  const ip = clientIp(request);
   if (!(await takeEmailLimit(env.DB, "password-ip:" + ip, 30)))
     return Response.json({ error: "Muitas tentativas. Aguarde alguns minutos." }, { status: 429 });
   const user = await findPasswordAccount(env.DB, p?.identifier || p?.username),

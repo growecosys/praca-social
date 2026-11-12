@@ -104,7 +104,7 @@ export async function mutateCircleWork(db: any, id: number, uid: string, p: any)
       end = date(p.end);
     if (end < start) throw new CircleError("O fim deve vir após o início.");
     entity = await first(
-      "INSERT INTO circle_cycles(circle_id,name,goal,start,end) VALUES (?,?,?,?,?) RETURNING id",
+      'INSERT INTO circle_cycles(circle_id,name,goal,start,"end") VALUES (?,?,?,?,?) RETURNING id',
       id,
       name,
       goal,

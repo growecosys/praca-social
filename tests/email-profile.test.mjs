@@ -44,10 +44,26 @@ async function setup() {
   d.exec(
     "PRAGMA foreign_keys=ON;CREATE TABLE users(id TEXT PRIMARY KEY,username TEXT UNIQUE,display_name TEXT,profile_complete INTEGER DEFAULT 1,answers_json TEXT DEFAULT '[]',deleted_at TEXT,secret_hash TEXT,secret_salt TEXT,updated_at TEXT);CREATE TABLE sessions(user_id TEXT);CREATE TABLE posts(id INTEGER,owner_id TEXT);CREATE TABLE comments(id INTEGER,user_id TEXT);CREATE TABLE activity_events(user_id TEXT,action TEXT,entity_type TEXT,entity_id TEXT,metadata_json TEXT DEFAULT '{}');INSERT INTO users(id,username,display_name) VALUES ('a','ana','Ana'),('b','beto','Beto');",
   );
-  d.exec(await readFile(new URL("../drizzle/0024_worthless_wasp.sql", import.meta.url), "utf8"));
-  d.exec(await readFile(new URL("../drizzle/0025_blue_blockbuster.sql", import.meta.url), "utf8"));
   d.exec(
-    await readFile(new URL("../drizzle/0026_curvy_captain_midlands.sql", import.meta.url), "utf8"),
+    await readFile(
+      new URL("../tests/fixtures/sqlite-migrations/0024_worthless_wasp.sql", import.meta.url),
+      "utf8",
+    ),
+  );
+  d.exec(
+    await readFile(
+      new URL("../tests/fixtures/sqlite-migrations/0025_blue_blockbuster.sql", import.meta.url),
+      "utf8",
+    ),
+  );
+  d.exec(
+    await readFile(
+      new URL(
+        "../tests/fixtures/sqlite-migrations/0026_curvy_captain_midlands.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
   );
   return { d, db: adapter(d) };
 }

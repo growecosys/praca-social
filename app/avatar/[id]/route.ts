@@ -26,8 +26,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     imageKey = generation.imageKey;
   }
   if (imageKey) {
-    const { env } = await import("cloudflare:workers");
-    const object = await env.BUCKET.get(imageKey);
+    const { env } = await import("../../../lib/env");
+    const object = await env.BUCKET?.get(imageKey);
     if (object)
       return new Response(object.body, {
         headers: {

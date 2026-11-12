@@ -1,4 +1,5 @@
-import { env } from "cloudflare:workers";
+import { clientIp } from "../../../../lib/client-ip";
+import { env } from "../../../../lib/env";
 import { cookies } from "next/headers";
 import { createSession, clearSession, getPracaUser } from "../../../../lib/praca-auth";
 import {
@@ -35,7 +36,7 @@ export async function POST(request: Request) {
   const jar = await cookies(),
     user = await getPracaUser(),
     db = env.DB,
-    ip = request.headers.get("cf-connecting-ip") || "unknown";
+    ip = clientIp(request);
   try {
     if (p.action === "request") {
       if (!emailReady(env))

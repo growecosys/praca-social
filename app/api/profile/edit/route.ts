@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env } from "../../../../lib/env";
 import { requirePracaUser } from "../../../../lib/praca-auth";
 import { saveProfileEdit } from "../../../../lib/profile-edit";
 export async function POST(request: Request) {

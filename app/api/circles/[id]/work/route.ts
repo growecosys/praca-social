@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env } from "../../../../../lib/env";
 import { getPracaUser } from "../../../../../lib/praca-auth";
 import { CircleError, readCircleWork, mutateCircleWork } from "../../../../../lib/circle-work";
 const headers = { "cache-control": "private, no-store", vary: "Cookie" };

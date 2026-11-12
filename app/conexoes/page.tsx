@@ -12,7 +12,7 @@ import PokeInboxActions from "../../components/poke-inbox-actions";
 import SentConnectionActions from "../../components/sent-connection-actions";
 import SiteHeader from "../../components/site-header";
 import { getDb } from "../../db";
-import { pokes, posts, users } from "../../db/schema";
+import { pokes, posts, users, nowText } from "../../db/schema";
 import { getPracaUser } from "../../lib/praca-auth";
 
 export const dynamic = "force-dynamic";
@@ -116,12 +116,12 @@ export default async function ConnectionsPage({
   const openStates = ["pending", "seen", "accepted"];
   await db
     .update(pokes)
-    .set({ status: "archived", resolvedAt: sql`CURRENT_TIMESTAMP` })
+    .set({ status: "archived", resolvedAt: nowText })
     .where(
       and(
         or(eq(pokes.recipientId, user.id), eq(pokes.senderId, user.id)),
         inArray(pokes.status, ["pending", "seen"]),
-        lte(pokes.expiresAt, sql`CURRENT_TIMESTAMP`),
+        lte(pokes.expiresAt, nowText),
       ),
     );
   const stateFilter = archived

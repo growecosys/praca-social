@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env } from "../../../lib/env";
 import { requirePracaUser } from "../../../lib/praca-auth";
 const LIMIT = 3;
 async function state(userId: string) {
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
         );
   }
   const reservation = await env.DB.prepare(
-    "INSERT OR IGNORE INTO post_images(id,user_id,prompt,status) SELECT ?,?,?,'pending' WHERE (SELECT count(*) FROM post_images WHERE user_id=? AND status!='failed') < ?",
+    "INSERT INTO post_images(id,user_id,prompt,status) SELECT CAST(? AS text),CAST(? AS text),CAST(? AS text),'pending' WHERE (SELECT count(*) FROM post_images WHERE user_id=? AND status!='failed') < CAST(? AS bigint) ON CONFLICT DO NOTHING",
   )
     .bind(p.requestId, user.id, p.prompt.trim(), user.id, LIMIT)
     .run();

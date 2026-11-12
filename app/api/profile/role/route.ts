@@ -1,6 +1,6 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import { getDb } from "../../../../db";
-import { activityEvents, roleGenerations, users } from "../../../../db/schema";
+import { activityEvents, roleGenerations, users, nowText } from "../../../../db/schema";
 import { requirePracaUser } from "../../../../lib/praca-auth";
 import {
   generateProfileIdentity,
@@ -95,7 +95,7 @@ export async function POST(request: Request) {
     .update(users)
     .set({
       generationsUsed: sql`${users.generationsUsed} + 1`,
-      updatedAt: sql`CURRENT_TIMESTAMP`,
+      updatedAt: nowText,
     })
     .where(eq(users.id, user.id));
   await db.insert(activityEvents).values({
@@ -176,7 +176,7 @@ export async function PATCH(request: Request) {
       explanation:
         "Versão reconstruída a partir do título histórico e das cinco respostas preservadas.",
       status: "applied",
-      appliedAt: sql`CURRENT_TIMESTAMP`,
+      appliedAt: nowText,
     });
     await db
       .update(users)
@@ -184,7 +184,7 @@ export async function PATCH(request: Request) {
         roleTitle,
         manifesto: identity.manifesto,
         avatarJson,
-        updatedAt: sql`CURRENT_TIMESTAMP`,
+        updatedAt: nowText,
       })
       .where(eq(users.id, user.id));
     await db.insert(activityEvents).values({
@@ -221,7 +221,7 @@ export async function PATCH(request: Request) {
         roleTitle: generation.roleTitle,
         manifesto: generation.manifesto,
         avatarJson: generation.avatarJson,
-        updatedAt: sql`CURRENT_TIMESTAMP`,
+        updatedAt: nowText,
       })
       .where(eq(users.id, user.id));
   if (payload.action !== "select")
@@ -229,7 +229,7 @@ export async function PATCH(request: Request) {
       .update(roleGenerations)
       .set({
         status: payload.action === "apply" ? "applied" : "rejected",
-        appliedAt: sql`CURRENT_TIMESTAMP`,
+        appliedAt: nowText,
       })
       .where(eq(roleGenerations.id, generation.id));
   const action =

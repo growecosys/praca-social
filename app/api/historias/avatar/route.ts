@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env } from "../../../../lib/env";
 import { storyRow } from "../../../../lib/stories-store";
 export async function GET(request: Request) {
   const url = new URL(request.url),
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   )
     return new Response("", { status: 404 });
   if (m.avatar) {
-    const object = await env.BUCKET.get(m.avatar);
+    const object = await env.BUCKET?.get(m.avatar);
     if (object)
       return new Response(object.body, {
         headers: {

@@ -1,6 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "../../../../../db";
-import { posts, postViews } from "../../../../../db/schema";
+import { posts, postViews, nowText } from "../../../../../db/schema";
 import { getPracaUser } from "../../../../../lib/praca-auth";
 import { jsonWithVisitor, visitorFromRequest } from "../../../../../lib/visitor";
 
@@ -30,7 +30,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
         .update(postViews)
         .set({
           views: sql`${postViews.views} + 1`,
-          lastSeenAt: sql`CURRENT_TIMESTAMP`,
+          lastSeenAt: nowText,
           userId: user?.id || existing.userId,
         })
         .where(eq(postViews.id, existing.id));

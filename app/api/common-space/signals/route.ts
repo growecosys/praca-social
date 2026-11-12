@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env } from "../../../../lib/env";
 import { z } from "zod";
 import { reviewSignal } from "../../../../lib/common-signal-review";
 import {
@@ -35,11 +35,12 @@ export async function GET(request: Request) {
   const user = await getPracaUser();
   const { results } = await env.DB.prepare(
     `
-    SELECT s.id, s.body, s.page, s.created_at AS createdAt, s.analysis, s.attempts,
-      s.started_at AS startedAt, s.author_id = ? AS mine,
-      CASE WHEN s.hide_name = 0 THEN COALESCE(NULLIF(u.display_name, ''), u.username) END AS authorName
+    SELECT s.id, s.body, s.page, s.created_at AS "createdAt", s.analysis, s.attempts,
+      s.started_at AS "startedAt",
+      CASE WHEN s.author_id = ? THEN 1 ELSE 0 END AS mine,
+      CASE WHEN s.hide_name = 0 THEN COALESCE(NULLIF(u.display_name, ''), u.username) END AS "authorName"
     FROM common_signals s LEFT JOIN users u ON u.id = s.author_id AND u.deleted_at IS NULL
-    WHERE (? IS NULL OR s.id = ?)
+    WHERE (CAST(? AS text) IS NULL OR s.id = ?)
     ORDER BY s.created_at DESC, s.id DESC LIMIT ? OFFSET ?
   `,
   )
@@ -90,11 +91,12 @@ export async function POST(request: Request) {
     const saved = await env.DB.prepare(
       `
       INSERT INTO common_signals (id, author_id, body, page, hide_name, created_at)
-      SELECT ?, ?, ?, ?, ?, ?
+      SELECT CAST(? AS text), CAST(? AS text), CAST(? AS text), CAST(? AS text), CAST(? AS integer), CAST(? AS bigint)
       WHERE EXISTS (SELECT 1 FROM common_signals WHERE id = ? AND author_id = ?)
         OR (SELECT count(*) FROM common_signals WHERE author_id = ? AND created_at > ?) < 5
       ON CONFLICT(id) DO UPDATE SET id = excluded.id
-      WHERE author_id = excluded.author_id AND body = excluded.body AND page = excluded.page AND hide_name = excluded.hide_name
+      WHERE common_signals.author_id = excluded.author_id AND common_signals.body = excluded.body
+        AND common_signals.page = excluded.page AND common_signals.hide_name = excluded.hide_name
       RETURNING id
     `,
     )

@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env } from "../../../../lib/env";
 import {
   governanceCancellation,
   governanceSubmission,
@@ -17,10 +17,10 @@ export async function GET(request: Request) {
   const user = await getPracaUser();
   const { results } = await env.DB.prepare(
     `
-      SELECT p.id, p.kind, p.title, p.scope, p.change, p.impact, p.rules, p.cancelled_at AS cancelledAt,
-        CASE WHEN p.author_id = ? AND p.cancelled_at IS NULL THEN 1 ELSE 0 END AS canCancel,
-        strftime('%Y-%m-%dT%H:%M:%SZ', p.created_at) AS createdAt,
-        u.username, u.display_name AS displayName
+      SELECT p.id, p.kind, p.title, p.scope, p.change, p.impact, p.rules, p.cancelled_at AS "cancelledAt",
+        CASE WHEN p.author_id = ? AND p.cancelled_at IS NULL THEN 1 ELSE 0 END AS "canCancel",
+        to_char(p.created_at::timestamp, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS "createdAt",
+        u.username, u.display_name AS "displayName"
       FROM common_governance_proposals p
       LEFT JOIN users u ON u.id = p.author_id AND u.deleted_at IS NULL
       ORDER BY p.created_at DESC, p.id DESC
@@ -63,8 +63,13 @@ export async function POST(request: Request) {
     INSERT INTO common_governance_proposals (id, author_id, kind, title, scope, change, impact, rules)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET id = excluded.id
-    WHERE author_id = excluded.author_id AND kind = excluded.kind AND title = excluded.title
-      AND scope = excluded.scope AND change = excluded.change AND impact = excluded.impact AND rules IS excluded.rules
+    WHERE common_governance_proposals.author_id = excluded.author_id
+      AND common_governance_proposals.kind = excluded.kind
+      AND common_governance_proposals.title = excluded.title
+      AND common_governance_proposals.scope = excluded.scope
+      AND common_governance_proposals.change = excluded.change
+      AND common_governance_proposals.impact = excluded.impact
+      AND common_governance_proposals.rules IS NOT DISTINCT FROM excluded.rules
     RETURNING id
   `,
   )

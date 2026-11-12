@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env } from "../../../lib/env";
 import { requirePracaUser } from "../../../lib/praca-auth";
 
 const allowed = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/avif"]);

@@ -43,8 +43,8 @@ function action(s, id, key, now = start + 10, dice = [1, 1]) {
     dice,
   );
 }
-const sql32 = await readFile("drizzle/0032_oval_raider.sql", "utf8"),
-  sql34 = await readFile("drizzle/0034_abnormal_steve_rogers.sql", "utf8");
+const sql32 = await readFile("tests/fixtures/sqlite-migrations/0032_oval_raider.sql", "utf8"),
+  sql34 = await readFile("tests/fixtures/sqlite-migrations/0034_abnormal_steve_rogers.sql", "utf8");
 function setup() {
   const d = new DatabaseSync(":memory:");
   d.exec(

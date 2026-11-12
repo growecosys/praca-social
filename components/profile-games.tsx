@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env } from "../lib/env";
 import { Plane, Gamepad2, Trophy } from "lucide-react";
 import { gameProfile } from "../lib/arcade-store";
 import RpgProfile from "./rpg-profile";

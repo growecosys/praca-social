@@ -102,12 +102,13 @@ export async function sendCircleMessage(db: any, circleId: number, userId: strin
       409,
     );
   let inserted;
+  const oneMinuteAgo = new Date(Date.now() - 60_000).toISOString().slice(0, 19).replace("T", " ");
   try {
     inserted = await db
       .prepare(
-        `INSERT INTO circle_messages(circle_id,author_id,client_id,body) SELECT c.id,?,?,? FROM circles c JOIN circle_members m ON m.circle_id=c.id JOIN users u ON u.id=m.user_id WHERE c.id=? AND m.user_id=? AND m.status='active' AND c.status!='archived' AND c.chat_enabled=1 AND c.deleted_at IS NULL AND u.deleted_at IS NULL AND (SELECT count(*) FROM circle_messages WHERE author_id=? AND created_at>=datetime('now','-1 minute'))<20 RETURNING id`,
+        `INSERT INTO circle_messages(circle_id,author_id,client_id,body) SELECT c.id,?,?,? FROM circles c JOIN circle_members m ON m.circle_id=c.id JOIN users u ON u.id=m.user_id WHERE c.id=? AND m.user_id=? AND m.status='active' AND c.status!='archived' AND c.chat_enabled=1 AND c.deleted_at IS NULL AND u.deleted_at IS NULL AND (SELECT count(*) FROM circle_messages WHERE author_id=? AND created_at>=?)<20 RETURNING id`,
       )
-      .bind(userId, clientId, body, circleId, userId, userId)
+      .bind(userId, clientId, body, circleId, userId, userId, oneMinuteAgo)
       .first();
   } catch (e) {
     const duplicate = await find();

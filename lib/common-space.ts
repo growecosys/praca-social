@@ -34,7 +34,7 @@ export async function seedCommonAssets(db: any) {
     ...INITIAL_COMMON_ASSETS.map(([id, element]) =>
       db
         .prepare(
-          "INSERT OR IGNORE INTO common_assets(id,element,url,prompt,active) VALUES (?,?,?,?,1)",
+          "INSERT INTO common_assets(id,element,url,prompt,active) VALUES (?,?,?,?,1) ON CONFLICT DO NOTHING",
         )
         .bind(
           id,
@@ -46,7 +46,7 @@ export async function seedCommonAssets(db: any) {
     ...preparedAssets.map((a) =>
       db
         .prepare(
-          "INSERT OR IGNORE INTO common_assets(id,element,url,prompt,placement_json,active) VALUES (?,?,?,?,?,1)",
+          "INSERT INTO common_assets(id,element,url,prompt,placement_json,active) VALUES (?,?,?,?,?,1) ON CONFLICT DO NOTHING",
         )
         .bind(
           a.id,

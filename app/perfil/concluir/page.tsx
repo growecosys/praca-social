@@ -2,7 +2,7 @@ export const metadata = {
   title: "Criar sua identidade — Praça",
   robots: { index: false, follow: false },
 };
-import { env } from "cloudflare:workers";
+import { env } from "../../../lib/env";
 import { redirect } from "next/navigation";
 import { getPracaUser } from "../../../lib/praca-auth";
 import Ritual from "./ritual";

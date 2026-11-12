@@ -67,7 +67,7 @@ export async function reserveRpgCall(db: any, userId: string, day: string) {
   await active(db, userId);
   const r = await db
     .prepare(
-      "INSERT INTO rpg_usage(user_id,day,calls) VALUES(?,?,1) ON CONFLICT(user_id,day) DO UPDATE SET calls=calls+1 WHERE calls<30 RETURNING calls",
+      "INSERT INTO rpg_usage(user_id,day,calls) VALUES(?,?,1) ON CONFLICT(user_id,day) DO UPDATE SET calls=rpg_usage.calls+1 WHERE rpg_usage.calls<30 RETURNING calls",
     )
     .bind(userId, day)
     .first();

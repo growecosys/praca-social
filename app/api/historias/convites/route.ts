@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env } from "../../../../lib/env";
 import { requirePracaUser } from "../../../../lib/praca-auth";
 import { tickStories } from "../../../../lib/stories-store";
 
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   const recipient = await env.DB.prepare(
     `
     SELECT id FROM users
-    WHERE username = ? COLLATE NOCASE AND deleted_at IS NULL AND profile_complete = 1
+    WHERE lower(username) = lower(?) AND deleted_at IS NULL AND profile_complete = 1
     AND NOT EXISTS (
       SELECT 1 FROM user_blocks
       WHERE (user_id = ? AND blocked_id = users.id) OR (user_id = users.id AND blocked_id = ?)
@@ -54,10 +54,10 @@ export async function POST(request: Request) {
     SELECT ?, ?, ?, 'Convite para Histórias da Praça', ?,
       '/jogar/historias?campanha=' || ?, ?
     WHERE EXISTS (SELECT 1 FROM story_campaigns WHERE id = ? AND active = 1
-      AND json_extract(state_json, '$.phase') = 'enrollment'
-      AND json_extract(state_json, '$.enrollEnd') > ?)
+      AND (state_json::jsonb ->> 'phase') = 'enrollment'
+      AND (state_json::jsonb ->> 'enrollEnd')::numeric > ?)
     AND (SELECT COUNT(*) FROM notifications WHERE actor_id = ? AND type = ?
-      AND created_at >= datetime('now', '-1 day')) < 8
+      AND created_at >= to_char(timezone('utc', now()) - interval '1 day', 'YYYY-MM-DD HH24:MI:SS')) < 8
     ON CONFLICT DO NOTHING RETURNING id
   `,
   )

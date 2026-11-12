@@ -1,6 +1,13 @@
 import { and, eq, sql, isNull } from "drizzle-orm";
 import { getDb } from "../../../db";
-import { circles, circleMembers, circleEntries, activityEvents, users } from "../../../db/schema";
+import {
+  circles,
+  circleMembers,
+  circleEntries,
+  activityEvents,
+  users,
+  nowText,
+} from "../../../db/schema";
 import { requirePracaUser } from "../../../lib/praca-auth";
 import { connect, connectedPeople } from "../../../lib/connections";
 import { notify } from "../../../lib/notifications";
@@ -85,10 +92,7 @@ export async function POST(request: Request) {
     and(eq(circleMembers.circleId, id), eq(circleMembers.userId, uid));
   if (p.action === "delete") {
     if (!owner) return fail("Somente o responsável pode excluir.", 403);
-    await db
-      .update(circles)
-      .set({ deletedAt: sql`CURRENT_TIMESTAMP` })
-      .where(eq(circles.id, id));
+    await db.update(circles).set({ deletedAt: nowText }).where(eq(circles.id, id));
     await db.insert(activityEvents).values({
       userId: user.id,
       action: "circle_deleted",

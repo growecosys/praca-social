@@ -1,4 +1,3 @@
-import { recoverLegacyConnections } from "./legacy-connections";
 import { eq, or } from "drizzle-orm";
 import { getDb } from "../db";
 import { connections, users } from "../db/schema";
@@ -8,7 +7,6 @@ export async function connect(a: string, b: string) {
     await getDb().insert(connections).values({ userA, userB }).onConflictDoNothing();
 }
 export async function connectedPeople(id: string) {
-  await recoverLegacyConnections();
   const rows = await getDb()
     .select()
     .from(connections)

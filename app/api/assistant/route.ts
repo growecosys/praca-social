@@ -122,7 +122,7 @@ export async function POST(request: Request) {
   const auth = await requirePracaUser();
   if (auth.error) return auth.error;
   const user = auth.user!;
-  const { env } = await import("cloudflare:workers");
+  const { env } = await import("../../../lib/env");
   const apiKey = (env as unknown as { OPENAI_API_KEY?: string }).OPENAI_API_KEY;
   if (!apiKey)
     return Response.json({ error: "O assistente ainda não foi configurado." }, { status: 503 });

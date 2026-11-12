@@ -1,7 +1,7 @@
 import { eq, sql } from "drizzle-orm";
-import { env } from "cloudflare:workers";
+import { env } from "../../../../lib/env";
 import { getDb } from "../../../../db";
-import { activityEvents, avatarGenerations, users } from "../../../../db/schema";
+import { activityEvents, avatarGenerations, users, nowText } from "../../../../db/schema";
 import { requirePracaUser } from "../../../../lib/praca-auth";
 
 const MODEL = "gpt-image-2";
@@ -88,10 +88,16 @@ export async function POST(request: Request) {
     payload = await request.json();
   } catch {}
   const generation = details(user, payload.direction);
-  const key = (env as any).OPENAI_API_KEY;
+  const key = env.OPENAI_API_KEY;
   if (!key)
     return Response.json(
       { error: "A chave da API de imagens não está configurada." },
+      { status: 503 },
+    );
+  const bucket = env.BUCKET;
+  if (!bucket)
+    return Response.json(
+      { error: "O armazenamento de imagens está indisponível." },
       { status: 503 },
     );
   const response = await fetch("https://api.openai.com/v1/images/generations", {
@@ -126,7 +132,7 @@ export async function POST(request: Request) {
   if (!b64)
     return Response.json({ error: "A API não devolveu uma imagem utilizável." }, { status: 502 });
   const imageKey = `avatars/${user.id}/${crypto.randomUUID()}.png`;
-  await env.BUCKET.put(imageKey, decodeBase64(b64), {
+  await bucket.put(imageKey, decodeBase64(b64), {
     httpMetadata: {
       contentType: "image/png",
       cacheControl: "public, max-age=31536000, immutable",
@@ -151,7 +157,7 @@ export async function POST(request: Request) {
     .set({
       avatarImageKey: imageKey,
       imageGenerationsUsed: sql`${users.imageGenerationsUsed} + 1`,
-      updatedAt: sql`CURRENT_TIMESTAMP`,
+      updatedAt: nowText,
     })
     .where(eq(users.id, user.id));
   await db.insert(activityEvents).values({
@@ -199,7 +205,7 @@ export async function PATCH(request: Request) {
     .update(users)
     .set({
       avatarImageKey: generation.imageKey,
-      updatedAt: sql`CURRENT_TIMESTAMP`,
+      updatedAt: nowText,
     })
     .where(eq(users.id, user.id));
   await db.insert(activityEvents).values({

@@ -1,6 +1,6 @@
 import OnboardingProgress from "../../components/onboarding-progress";
 import { redirect } from "next/navigation";
-import { env } from "cloudflare:workers";
+import { env } from "../../lib/env";
 import { getPracaUser } from "../../lib/praca-auth";
 import SiteNavigation from "../../components/site-navigation";
 import EmailAccessForm from "../../components/email-access-form";

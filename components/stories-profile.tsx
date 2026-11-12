@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env } from "../lib/env";
 import { storyProfile } from "../lib/stories-store";
 export default async function StoriesProfile({
   userId,

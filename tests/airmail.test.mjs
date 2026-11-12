@@ -20,7 +20,7 @@ const store = await import(
       (await code("lib/arcade-store.ts")).replaceAll('"./airmail"', JSON.stringify(url)),
     ).toString("base64")
 );
-const migration = await readFile("drizzle/0032_oval_raider.sql", "utf8");
+const migration = await readFile("tests/fixtures/sqlite-migrations/0032_oval_raider.sql", "utf8");
 function setup() {
   const d = new DatabaseSync(":memory:");
   d.exec(

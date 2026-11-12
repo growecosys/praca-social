@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env } from "../../lib/env";
 import { storyOverview } from "../../lib/story-overview";
 import StoryLobbySummary from "../../components/story-lobby-summary";
 import SiteHeader from "../../components/site-header";

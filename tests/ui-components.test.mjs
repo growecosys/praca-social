@@ -36,7 +36,10 @@ async function readCssTree(directory) {
 }
 
 test("emits the catalog's animation and scrolling utilities", async () => {
-  const css = await readCssTree(path.join(root, "dist"));
+  const staticDirectory = path.join(root, ".next", "static");
+  const css = await readCssTree(staticDirectory).catch(() => {
+    throw new Error("Run `npm run build` first: the Next.js CSS output is missing.");
+  });
 
   assert.match(css, /--tw-enter-opacity/);
   assert.match(css, /scrollbar-width:\s*thin/);

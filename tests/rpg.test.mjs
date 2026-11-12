@@ -59,7 +59,7 @@ function setup() {
 }
 const requireSql = {};
 for (const f of ["0032_oval_raider.sql", "0033_soft_skreet.sql"])
-  requireSql[f] = await readFile("drizzle/" + f, "utf8");
+  requireSql[f] = await readFile("tests/fixtures/sqlite-migrations/" + f, "utf8");
 function proposed(s, id) {
   const a = r.available(s).find((a) => a.id === id);
   assert.ok(a);

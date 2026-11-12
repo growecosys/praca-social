@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env } from "../../../../lib/env";
 import { cookies } from "next/headers";
 import { getPracaUser } from "../../../../lib/praca-auth";
 import { deleteAccount } from "../../../../lib/delete-account";

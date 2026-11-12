@@ -1,5 +1,5 @@
 import { readPlacement } from "../../../../lib/nature-placement";
-import { env } from "cloudflare:workers";
+import { env } from "../../../../lib/env";
 import { seedCommonAssets, closeCommonProposals } from "../../../../lib/common-space";
 export async function GET() {
   await seedCommonAssets(env.DB);

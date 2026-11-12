@@ -1,7 +1,15 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import { getPracaUser } from "../../../../../lib/praca-auth";
 import { getDb } from "../../../../../db";
-import { activityEvents, comments, likes, pokes, posts, users } from "../../../../../db/schema";
+import {
+  activityEvents,
+  comments,
+  likes,
+  pokes,
+  posts,
+  users,
+  nowText,
+} from "../../../../../db/schema";
 import { jsonWithVisitor, visitorFromRequest } from "../../../../../lib/visitor";
 import { notify } from "../../../../../lib/notifications";
 
@@ -137,7 +145,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
     if (user)
       await db
         .update(pokes)
-        .set({ status: "completed", resolvedAt: sql`CURRENT_TIMESTAMP` })
+        .set({ status: "completed", resolvedAt: nowText })
         .where(
           and(
             eq(pokes.recipientId, user.id),

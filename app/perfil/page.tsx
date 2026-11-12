@@ -1,7 +1,7 @@
 import ProfileGames from "../../components/profile-games";
 export const metadata = { title: "Meu perfil — Praça", robots: { index: false, follow: false } };
 import DeleteAccountForm from "../../components/delete-account-form";
-import { env } from "cloudflare:workers";
+import { env } from "../../lib/env";
 import NatureSpot from "../../components/nature-spot";
 import PageBack from "../../components/page-back";
 import { and, desc, eq, inArray } from "drizzle-orm";

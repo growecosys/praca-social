@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env } from "../lib/env";
 import { commonCalendar } from "../lib/common-space";
 import { pracaDeadline, storyOverview } from "../lib/story-overview";
 

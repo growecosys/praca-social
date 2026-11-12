@@ -1,6 +1,6 @@
 import { and, asc, eq, gt, inArray, sql } from "drizzle-orm";
 import { getDb } from "../../../db";
-import { notifications, pokes, posts, users } from "../../../db/schema";
+import { notifications, pokes, posts, users, nowText } from "../../../db/schema";
 import { getPracaUser, requirePracaUser } from "../../../lib/praca-auth";
 
 export async function GET() {
@@ -24,7 +24,7 @@ export async function GET() {
           eq(pokes.recipientId, user.id),
           eq(pokes.kind, "mystery"),
           inArray(pokes.status, ["pending", "seen"]),
-          gt(pokes.expiresAt, sql`CURRENT_TIMESTAMP`),
+          gt(pokes.expiresAt, nowText),
         ),
       )
       .orderBy(asc(pokes.createdAt))
@@ -41,18 +41,18 @@ export async function POST(request: Request) {
   if (payload.action === "archive_all") {
     await db
       .update(pokes)
-      .set({ status: "archived", resolvedAt: sql`CURRENT_TIMESTAMP` })
+      .set({ status: "archived", resolvedAt: nowText })
       .where(and(eq(pokes.recipientId, auth.user!.id), inArray(pokes.status, ["pending", "seen"])));
     await db
       .update(notifications)
-      .set({ readAt: sql`CURRENT_TIMESTAMP` })
+      .set({ readAt: nowText })
       .where(
         and(eq(notifications.recipientId, auth.user!.id), eq(notifications.type, "connection")),
       );
     return Response.json({ ok: true });
   }
   if (!payload.id) return Response.json({ error: "Cutucada inválida." }, { status: 400 });
-  const now = sql`CURRENT_TIMESTAMP`;
+  const now = nowText;
   await db
     .update(pokes)
     .set({ status: "archived", seenAt: now, resolvedAt: now })

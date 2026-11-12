@@ -6,7 +6,12 @@ import { transformWithEsbuild } from "vite";
 test("post images require confirmation, reserve quota atomically and never duplicate a paid request", async () => {
   const db = new DatabaseSync(":memory:");
   db.exec("CREATE TABLE users(id TEXT PRIMARY KEY); INSERT INTO users VALUES ('tester')");
-  db.exec(await readFile(new URL("../drizzle/0022_post_images.sql", import.meta.url), "utf8"));
+  db.exec(
+    await readFile(
+      new URL("../tests/fixtures/sqlite-migrations/0022_post_images.sql", import.meta.url),
+      "utf8",
+    ),
+  );
   const originalFetch = globalThis.fetch;
   let calls = 0;
   const DB = {
@@ -44,7 +49,7 @@ test("post images require confirmation, reserve quota atomically and never dupli
     );
     source = source
       .replace(
-        /import \{ env \} from ["']cloudflare:workers["'];/,
+        /import \{ env \} from ["'][./]*\/lib\/env["'];/,
         "const env=globalThis.__imageTest.env;",
       )
       .replace(

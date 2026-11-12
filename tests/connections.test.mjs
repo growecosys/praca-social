@@ -1,9 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { DatabaseSync } from "node:sqlite";
 import { transformWithEsbuild } from "vite";
-import { SQLiteSyncDialect } from "drizzle-orm/sqlite-core";
 async function module(file, replace = (s) => s, suffix = "") {
   const source = replace(await readFile(new URL("../" + file, import.meta.url), "utf8"));
   const { code } = await transformWithEsbuild(source, file, { loader: "ts", target: "esnext" });
@@ -11,71 +9,6 @@ async function module(file, replace = (s) => s, suffix = "") {
     "data:text/javascript;base64," + Buffer.from(code + "\n//" + suffix).toString("base64")
   );
 }
-test("legacy reciprocal recovery is bounded, idempotent and preserves audit history", async () => {
-  const d = new DatabaseSync(":memory:");
-  d.exec(
-    "CREATE TABLE pokes(id INTEGER PRIMARY KEY,sender_id TEXT,recipient_id TEXT,kind TEXT,status TEXT,created_at TEXT,resolved_at TEXT);CREATE TABLE connections(id INTEGER PRIMARY KEY,user_a TEXT,user_b TEXT,created_at TEXT,UNIQUE(user_a,user_b));CREATE TABLE activity_events(user_id TEXT,action TEXT,entity_type TEXT,entity_id TEXT,metadata_json TEXT);CREATE TABLE notifications(dedupe_key TEXT,read_at TEXT)",
-  );
-  const insert = d.prepare(
-    "INSERT INTO pokes VALUES (?,?,?,'mystery',?,'2026-10-29 10:00:00',NULL)",
-  );
-  for (const row of [
-    [1, "a", "b", "seen"],
-    [2, "b", "a", "archived"],
-    [3, "a", "c", "seen"],
-    [4, "a", "d", "seen"],
-    [5, "d", "a", "declined"],
-    [46, "a", "e", "seen"],
-    [47, "e", "a", "seen"],
-  ])
-    insert.run(...row);
-  d.exec("INSERT INTO notifications VALUES ('connection:1',NULL),('connection:3',NULL)");
-  const dialect = new SQLiteSyncDialect();
-  globalThis.__connectionRecoveryDb = {
-    run: (query) => query,
-    async batch(queries) {
-      d.exec("BEGIN");
-      try {
-        for (const query of queries) d.exec(dialect.sqlToQuery(query).sql);
-        d.exec("COMMIT");
-      } catch (e) {
-        d.exec("ROLLBACK");
-        throw e;
-      }
-    },
-  };
-  const replace = (s) =>
-    s
-      .replace('from "drizzle-orm"', `from "${import.meta.resolve("drizzle-orm")}"`)
-      .replace(
-        'import { getDb } from "../db";',
-        "const getDb=()=>globalThis.__connectionRecoveryDb;",
-      );
-  await (await module("lib/legacy-connections.ts", replace, "first")).recoverLegacyConnections();
-  await (
-    await module("lib/legacy-connections.ts", replace, "second-isolate")
-  ).recoverLegacyConnections();
-  assert.deepEqual(
-    d
-      .prepare("SELECT user_a,user_b FROM connections")
-      .all()
-      .map((x) => ({ ...x })),
-    [{ user_a: "a", user_b: "b" }],
-  );
-  assert.equal(d.prepare("SELECT count(*) n FROM activity_events").get().n, 1);
-  assert.equal(d.prepare("SELECT status FROM pokes WHERE id=1").get().status, "archived");
-  assert.equal(d.prepare("SELECT status FROM pokes WHERE id=3").get().status, "seen");
-  assert.equal(d.prepare("SELECT count(*) n FROM pokes").get().n, 7);
-  assert.ok(
-    d.prepare("SELECT read_at FROM notifications WHERE dedupe_key='connection:1'").get().read_at,
-  );
-  assert.equal(
-    d.prepare("SELECT read_at FROM notifications WHERE dedupe_key='connection:3'").get().read_at,
-    null,
-  );
-  delete globalThis.__connectionRecoveryDb;
-  d.close();
-});
 test("connection strength counts attended days, never repeated pokes or manual archives", async () => {
   const { connectionEdges } = await module("lib/connection-strength.ts");
   const pair = [{ userA: "a", userB: "b" }];

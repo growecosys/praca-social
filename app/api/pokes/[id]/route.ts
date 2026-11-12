@@ -1,6 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "../../../../db";
-import { activityEvents, notifications, pokes, posts, users } from "../../../../db/schema";
+import { activityEvents, notifications, pokes, posts, users, nowText } from "../../../../db/schema";
 import { requirePracaUser } from "../../../../lib/praca-auth";
 import { connect } from "../../../../lib/connections";
 
@@ -28,7 +28,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       .limit(1)
   )[0];
   if (!poke) return Response.json({ error: "Conexão não encontrada." }, { status: 404 });
-  const now = sql`CURRENT_TIMESTAMP`;
+  const now = nowText;
   if (payload.action === "cancel") {
     if (poke.senderId !== auth.user!.id)
       return Response.json({ error: "Somente quem iniciou pode cancelar." }, { status: 403 });

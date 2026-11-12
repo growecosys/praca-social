@@ -12,6 +12,7 @@ import {
   shareVisits,
   users,
   weeklyRewards,
+  nowText,
 } from "../../../db/schema";
 import { firstPostImage } from "../../../lib/post-media";
 
@@ -127,7 +128,7 @@ async function awardPreviousWeek(data: any) {
   if (!inserted.length) return;
   await db
     .update(users)
-    .set({ generationsUsed: 0, updatedAt: sql`CURRENT_TIMESTAMP` })
+    .set({ generationsUsed: 0, updatedAt: nowText })
     .where(eq(users.id, winner.id));
   await db.insert(activityEvents).values({
     userId: winner.id,

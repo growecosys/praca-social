@@ -2,7 +2,7 @@ export const metadata = { title: "Editar perfil — Praça", robots: { index: fa
 import DeleteAccountForm from "../../../components/delete-account-form";
 import ChangePasswordForm from "../../../components/change-password-form";
 import { redirect } from "next/navigation";
-import { env } from "cloudflare:workers";
+import { env } from "../../../lib/env";
 import { getPracaUser } from "../../../lib/praca-auth";
 import SiteHeader from "../../../components/site-header";
 import EmailAccessForm from "../../../components/email-access-form";

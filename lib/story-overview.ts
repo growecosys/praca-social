@@ -1,4 +1,5 @@
 import { tickStories } from "./stories-store";
+import type { Database } from "./sql";
 
 export function pracaDeadline(value: number | string) {
   return new Intl.DateTimeFormat("pt-BR", {
@@ -10,7 +11,7 @@ export function pracaDeadline(value: number | string) {
   }).format(new Date(value));
 }
 
-export async function storyOverview(db: D1Database, userId?: string) {
+export async function storyOverview(db: Database, userId?: string) {
   const { state } = await tickStories(db);
   const first = !(await db
     .prepare("SELECT 1 FROM story_campaigns WHERE id<>? LIMIT 1")

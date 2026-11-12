@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env } from "../../../lib/env";
 import { requirePracaUser } from "../../../lib/praca-auth";
 import { RpgError, available, skillKeys, OPENING, CLUE_TEXT, type Skill } from "../../../lib/rpg";
 import {

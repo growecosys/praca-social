@@ -64,7 +64,7 @@ export async function takeEmailLimit(db: any, key: string, max: number, now = Da
   return Boolean(
     await db
       .prepare(
-        "INSERT INTO auth_email_limits(id,attempts,expires_at) VALUES (?,1,?) ON CONFLICT(id) DO UPDATE SET attempts=attempts+1 WHERE attempts<? RETURNING id",
+        "INSERT INTO auth_email_limits(id,attempts,expires_at) VALUES (?,1,?) ON CONFLICT(id) DO UPDATE SET attempts=auth_email_limits.attempts+1 WHERE auth_email_limits.attempts<? RETURNING id",
       )
       .bind(id, expiry, max)
       .first(),

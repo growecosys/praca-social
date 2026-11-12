@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     )
       return Response.json({ error: "Lote de tradução inválido." }, { status: 400 });
     const texts = payload.texts as string[];
-    const { env } = await import("cloudflare:workers");
+    const { env } = await import("../../../lib/env");
     const key = (env as any).OPENAI_API_KEY;
     if (!key) return Response.json({ error: "Tradução indisponível." }, { status: 503 });
     const schema = {

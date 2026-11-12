@@ -33,7 +33,10 @@ function setup() {
   };
   return { d, db, act: (uid, p) => work.mutateCircleWork(db, 1, uid, p) };
 }
-const requireSQL = await readFile("drizzle/0030_first_polaris.sql", "utf8");
+const requireSQL = await readFile(
+  "tests/fixtures/sqlite-migrations/0030_first_polaris.sql",
+  "utf8",
+);
 const cycle = {
   action: "cycle",
   name: "Ciclo um",

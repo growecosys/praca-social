@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env } from "../../../../lib/env";
 import { getPracaUser, hashSecret, verifySecret, createSession } from "../../../../lib/praca-auth";
 import { takeEmailLimit } from "../../../../lib/email-access";
 import { changePassword } from "../../../../lib/change-password";

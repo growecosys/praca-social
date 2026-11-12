@@ -4,7 +4,7 @@ import {
   validateCommonElement,
   generateCommonImage,
 } from "../../../lib/common-validation";
-import { env } from "cloudflare:workers";
+import { env } from "../../../lib/env";
 import { requirePracaUser, getPracaUser } from "../../../lib/praca-auth";
 import {
   commonCalendar,
@@ -140,7 +140,7 @@ export async function POST(request: Request) {
         .bind(JSON.stringify(placement), asset.id, user.id),
       db
         .prepare(
-          "INSERT OR IGNORE INTO common_proposals(id,asset_id,creator_id,kind,month_key,closes_at) VALUES (?,?,?,'addition',?,?)",
+          "INSERT INTO common_proposals(id,asset_id,creator_id,kind,month_key,closes_at) VALUES (?,?,?,'addition',?,?) ON CONFLICT DO NOTHING",
         )
         .bind(asset.id, asset.id, user.id, cal.monthKey, cal.closesAt),
       db.prepare("UPDATE common_generations SET status='complete' WHERE id=?").bind(asset.id),
@@ -163,7 +163,7 @@ export async function POST(request: Request) {
   const id = crypto.randomUUID();
   const reserved = await db
     .prepare(
-      "INSERT OR IGNORE INTO common_generations(id,user_id,month_key,element) VALUES (?,?,?,?)",
+      "INSERT INTO common_generations(id,user_id,month_key,element) VALUES (?,?,?,?) ON CONFLICT DO NOTHING",
     )
     .bind(id, user.id, cal.monthKey, element)
     .run();

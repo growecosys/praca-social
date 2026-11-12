@@ -32,11 +32,27 @@ test("monthly governance respects Brasilia boundaries, majority, ties and preser
   assert.ok(commonPrompt("Jabuticaba").includes("Transparent background"));
   const d = new DatabaseSync(":memory:");
   d.exec("CREATE TABLE users(id TEXT PRIMARY KEY);INSERT INTO users VALUES ('a'),('b')");
-  d.exec(await readFile(new URL("../drizzle/0023_common_space.sql", import.meta.url), "utf8"));
   d.exec(
-    await readFile(new URL("../drizzle/0024_common_proposal_assets.sql", import.meta.url), "utf8"),
+    await readFile(
+      new URL("../tests/fixtures/sqlite-migrations/0023_common_space.sql", import.meta.url),
+      "utf8",
+    ),
   );
-  d.exec(await readFile(new URL("../drizzle/0023_boring_blizzard.sql", import.meta.url), "utf8"));
+  d.exec(
+    await readFile(
+      new URL(
+        "../tests/fixtures/sqlite-migrations/0024_common_proposal_assets.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
+  d.exec(
+    await readFile(
+      new URL("../tests/fixtures/sqlite-migrations/0023_boring_blizzard.sql", import.meta.url),
+      "utf8",
+    ),
+  );
   const db = {
     prepare(sql) {
       return {
