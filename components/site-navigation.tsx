@@ -23,10 +23,10 @@ export default function SiteNavigation({
   const pathname = usePathname();
   const walkingHeader = pathname === "/escrever" || pathname === "/jogar";
   const link = (section: Section) =>
-    `inline-flex min-h-11 items-center gap-2 px-2 text-sm font-semibold ${active === section ? "underline decoration-2 underline-offset-8" : "opacity-80 hover:opacity-100"}`;
+    `relative inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap px-2 text-sm font-semibold ${active === section ? "after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-current" : "opacity-80 motion-safe:transition-opacity hover:opacity-100"}`;
   return (
     <header
-      className={`relative z-30 border-b ${walkingHeader ? "nature-walking-header" : ""} ${dark ? "border-white/20 bg-[#14261b] text-white" : "border-[#d8d0c1] bg-[#f5f1e8] text-[#244e35]"}`}
+      className={`relative z-30 border-b ${walkingHeader ? "nature-walking-header" : ""} ${dark ? "border-white/20 bg-[#14261b] text-white" : "border-border bg-background text-primary"}`}
     >
       {walkingHeader && (
         <div className="nature-writing-header mx-auto max-w-[1180px] px-4 sm:px-8">
@@ -42,7 +42,7 @@ export default function SiteNavigation({
           <div className="flex flex-wrap items-center justify-end gap-1">
             <a
               href="/espaco-comum"
-              className={link("comum")}
+              className={`${link("comum")} max-sm:hidden`}
               aria-current={active === "comum" ? "page" : undefined}
             >
               Espaço Comum
@@ -62,40 +62,49 @@ export default function SiteNavigation({
             {signedIn && (
               <form action="/api/auth/logout" method="post">
                 <button
-                  className="inline-flex min-h-11 items-center gap-2 border-l border-current/20 px-3 text-sm font-semibold"
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 border-l border-current/20 px-3 text-sm font-semibold"
                   type="submit"
                   title="Sair da sua conta"
                 >
-                  <LogOut size={16} />
-                  Retirar-se
+                  <LogOut size={16} aria-hidden="true" />
+                  <span className="max-sm:sr-only">Retirar-se</span>
                 </button>
               </form>
             )}
           </div>
         </div>
-        <nav
-          aria-label="Navegação principal"
-          className="flex flex-wrap items-center gap-x-2 border-t border-current/15 pb-1 sm:gap-x-4"
-        >
-          {(
-            [
-              ["mural", "/mural", "Mural"],
-              ["escrever", "/escrever", "Escrever"],
-              ["placar", "/placar", "Placar de atividades"],
-              ["conexoes", "/conexoes", "Conexões"],
-              ["jogar", "/jogar", "Jogar"],
-            ] as [Section, string, string][]
-          ).map(([key, href, label]) => (
+        <div className="-mx-4 border-t border-current/15 sm:mx-0">
+          <nav
+            aria-label="Navegação principal"
+            className="scrollbar-none flex flex-nowrap items-center gap-x-1 overflow-x-auto px-2 sm:-ml-2 sm:gap-x-4 sm:overflow-visible sm:px-0"
+          >
             <a
-              key={key}
-              href={href}
-              className={link(key)}
-              aria-current={active === key ? "page" : undefined}
+              href="/espaco-comum"
+              className={`${link("comum")} sm:hidden`}
+              aria-current={active === "comum" ? "page" : undefined}
             >
-              {label}
+              Espaço Comum
             </a>
-          ))}
-        </nav>
+            {(
+              [
+                ["mural", "/mural", "Mural"],
+                ["escrever", "/escrever", "Escrever"],
+                ["placar", "/placar", "Placar de atividades"],
+                ["conexoes", "/conexoes", "Conexões"],
+                ["jogar", "/jogar", "Jogar"],
+              ] as [Section, string, string][]
+            ).map(([key, href, label]) => (
+              <a
+                key={key}
+                href={href}
+                className={link(key)}
+                aria-current={active === key ? "page" : undefined}
+              >
+                {label}
+              </a>
+            ))}
+          </nav>
+        </div>
       </div>
     </header>
   );

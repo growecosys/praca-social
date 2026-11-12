@@ -45,7 +45,11 @@ export default function LanguageToggle({ dark = false }: { dark?: boolean }) {
       title={failed ? "A tradução não foi concluída. Tente novamente." : undefined}
       className={`flex min-h-11 shrink-0 items-center gap-1.5 border px-2.5 py-2 text-xs font-bold transition disabled:opacity-60 ${dark ? "border-white/25 text-white/75 hover:border-[#f0c64b] hover:text-[#f0c64b]" : "border-[#c8c0b1] text-[#667064] hover:border-[#244e35] hover:text-[#244e35]"}`}
     >
-      {loading ? <LoaderCircle size={14} className="animate-spin" /> : <Languages size={14} />}
+      {loading ? (
+        <LoaderCircle size={14} className="animate-spin" />
+      ) : (
+        <Languages size={14} className="max-sm:hidden" />
+      )}
       <span
         className={language === "pt" ? "underline decoration-2 underline-offset-4" : "opacity-55"}
       >

@@ -1,5 +1,6 @@
 import SkipLink from "../components/skip-link";
 import type { Metadata, Viewport } from "next";
+import { Inter, Newsreader } from "next/font/google";
 import PokeReceiver from "../components/poke-receiver";
 import PageTranslator from "../components/page-translator";
 import NotificationRuntime from "../components/notification-runtime";
@@ -9,8 +10,23 @@ import PersonalGuide from "../components/personal-guide";
 import { getPracaUser } from "../lib/praca-auth";
 import "./globals.css";
 
+const sans = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
+const serif = Newsreader({
+  subsets: ["latin"],
+  variable: "--font-newsreader",
+  style: ["normal", "italic"],
+  axes: ["opsz"],
+  display: "swap",
+});
+
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : "http://localhost:3000");
+
 export const metadata: Metadata = {
-  metadataBase: new URL("https://praca-fs.greenpillbr.chatgpt.site"),
+  metadataBase: new URL(siteUrl),
   applicationName: "Praça",
   manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, title: "Praça", statusBarStyle: "default" },
@@ -53,7 +69,7 @@ export default async function RootLayout({
 }>) {
   const user = await getPracaUser();
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" className={`${sans.variable} ${serif.variable} bg-background`}>
       <body className="antialiased">
         <SkipLink />
         <PageTranslator />
