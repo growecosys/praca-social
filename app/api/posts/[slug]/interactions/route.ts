@@ -84,14 +84,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
     else {
       await db.insert(likes).values({ postId: post.id, visitorId: visitor.id, userId: user?.id });
       if (user)
-        await db
-          .insert(activityEvents)
-          .values({
-            userId: user.id,
-            action: "like_added",
-            entityType: "post",
-            entityId: String(post.id),
-          });
+        await db.insert(activityEvents).values({
+          userId: user.id,
+          action: "like_added",
+          entityType: "post",
+          entityId: String(post.id),
+        });
       if (post.ownerId && post.ownerId !== user?.id)
         await notify({
           recipientId: post.ownerId,
@@ -130,14 +128,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
       })
       .returning({ id: comments.id });
     if (user)
-      await db
-        .insert(activityEvents)
-        .values({
-          userId: user.id,
-          action: "comment_created",
-          entityType: "post",
-          entityId: String(post.id),
-        });
+      await db.insert(activityEvents).values({
+        userId: user.id,
+        action: "comment_created",
+        entityType: "post",
+        entityId: String(post.id),
+      });
     if (user)
       await db
         .update(pokes)

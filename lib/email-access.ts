@@ -231,7 +231,7 @@ export async function redeemEmailAccess(
       .run();
     return { userId: String(row.user_id), linked: true };
   }
-  let account = await db
+  const account = await db
     .prepare("SELECT user_id FROM account_emails WHERE email=?")
     .bind(row.email)
     .first();

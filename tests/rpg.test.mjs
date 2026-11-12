@@ -221,7 +221,7 @@ test("AI proposals cannot select absent actions, resolve outcomes or overwrite a
       "x",
     ),
   );
-  let s = store.attachProposal(row.state, "Pergunta", null, "Uma fala sem resultado mecânico.");
+  const s = store.attachProposal(row.state, "Pergunta", null, "Uma fala sem resultado mecânico.");
   assert.equal(s.xp, 0);
   assert.equal(s.clues.length, 0);
   await store.saveRpg(db, "a", 0, s);

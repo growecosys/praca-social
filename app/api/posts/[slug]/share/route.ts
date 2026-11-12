@@ -64,14 +64,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
       .insert(shareLinks)
       .values({ postId: post.id, code, visitorId: visitor.id, userId: user?.id });
     if (user)
-      await db
-        .insert(activityEvents)
-        .values({
-          userId: user.id,
-          action: "share_created",
-          entityType: "post",
-          entityId: String(post.id),
-        });
+      await db.insert(activityEvents).values({
+        userId: user.id,
+        action: "share_created",
+        entityType: "post",
+        entityId: String(post.id),
+      });
     share = (await db.select().from(shareLinks).where(eq(shareLinks.code, code)).limit(1))[0];
     if (post.ownerId && post.ownerId !== user?.id)
       await notify({

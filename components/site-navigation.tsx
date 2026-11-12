@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import NatureSpot from "./nature-spot";
 import { usePathname } from "next/navigation";
 import { Feather, LogOut } from "lucide-react";
@@ -34,10 +35,10 @@ export default function SiteNavigation({
       )}
       <div className="mx-auto max-w-[1180px] px-4 sm:px-8">
         <div className="flex min-h-16 flex-wrap items-center gap-1 py-2 sm:gap-2">
-          <a href="/" className="mr-auto flex min-h-11 items-center gap-2 font-semibold">
+          <Link href="/" className="mr-auto flex min-h-11 items-center gap-2 font-semibold">
             <Feather size={22} />
             praça
-          </a>
+          </Link>
           <div className="flex flex-wrap items-center justify-end gap-1">
             <a
               href="/espaco-comum"

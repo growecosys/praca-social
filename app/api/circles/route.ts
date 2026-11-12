@@ -51,14 +51,12 @@ export async function POST(request: Request) {
         dedupeKey: `circle-invite:${circle.id}:${person.id}`,
       });
     }
-    await db
-      .insert(activityEvents)
-      .values({
-        userId: user.id,
-        action: "circle_created",
-        entityType: "circle",
-        entityId: String(circle.id),
-      });
+    await db.insert(activityEvents).values({
+      userId: user.id,
+      action: "circle_created",
+      entityType: "circle",
+      entityId: String(circle.id),
+    });
     return Response.json({ href: `/circulos/${circle.id}` });
   }
   const id = Number(p.circleId);
@@ -67,14 +65,12 @@ export async function POST(request: Request) {
   if (circle.deletedAt) {
     if (p.action !== "restore" || circle.ownerId !== user.id) return fail("Círculo excluído.", 404);
     await db.update(circles).set({ deletedAt: null }).where(eq(circles.id, id));
-    await db
-      .insert(activityEvents)
-      .values({
-        userId: user.id,
-        action: "circle_restored",
-        entityType: "circle",
-        entityId: String(id),
-      });
+    await db.insert(activityEvents).values({
+      userId: user.id,
+      action: "circle_restored",
+      entityType: "circle",
+      entityId: String(id),
+    });
     return Response.json({ ok: true, href: `/circulos/${id}` });
   }
   const member = (
@@ -93,14 +89,12 @@ export async function POST(request: Request) {
       .update(circles)
       .set({ deletedAt: sql`CURRENT_TIMESTAMP` })
       .where(eq(circles.id, id));
-    await db
-      .insert(activityEvents)
-      .values({
-        userId: user.id,
-        action: "circle_deleted",
-        entityType: "circle",
-        entityId: String(id),
-      });
+    await db.insert(activityEvents).values({
+      userId: user.id,
+      action: "circle_deleted",
+      entityType: "circle",
+      entityId: String(id),
+    });
     return Response.json({ ok: true, href: "/conexoes?view=circles" });
   }
   if (p.action === "chat") {
@@ -235,14 +229,12 @@ export async function POST(request: Request) {
       })
       .where(eq(circleEntries.id, entry.id));
   } else return fail("Ação inválida.");
-  await db
-    .insert(activityEvents)
-    .values({
-      userId: user.id,
-      action: `circle_${p.action}`,
-      entityType: "circle",
-      entityId: String(id),
-      metadataJson: JSON.stringify({ request: p, previous: circle }),
-    });
+  await db.insert(activityEvents).values({
+    userId: user.id,
+    action: `circle_${p.action}`,
+    entityType: "circle",
+    entityId: String(id),
+    metadataJson: JSON.stringify({ request: p, previous: circle }),
+  });
   return Response.json({ ok: true });
 }

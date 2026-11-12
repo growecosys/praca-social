@@ -1,3 +1,4 @@
+import Link from "next/link";
 export const metadata = { title: "Conexões — Praça" };
 import NatureSpot from "../../components/nature-spot";
 import PageBack from "../../components/page-back";
@@ -200,12 +201,12 @@ export default async function ConnectionsPage({
               Pessoas próximas, missões em comum e o que espera uma resposta.
             </p>
           </div>
-          <a
+          <Link
             href="/circulos/novo"
             className="inline-flex min-h-11 items-center rounded-lg bg-[#f0c64b] px-5 text-sm font-semibold"
           >
             + Criar círculo
-          </a>
+          </Link>
         </div>
         <nav aria-label="Seções de Conexões" className="my-7 flex flex-wrap gap-2">
           {[

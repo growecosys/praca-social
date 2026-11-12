@@ -1,8 +1,39 @@
-// Module-scoped imports keep the DOM lib types (Request.json(): any) intact,
-// unlike the global @cloudflare/workers-types entry, which would replace them.
-declare module "cloudflare:workers" {
-  import type { D1Database, R2Bucket, Fetcher } from "@cloudflare/workers-types/index.ts";
+// Only D1 comes from @cloudflare/workers-types. Its R2/Fetcher/Request types clash with the
+// DOM lib that Next.js route handlers use, so those are described structurally here.
+type D1Database = import("@cloudflare/workers-types/index.ts").D1Database;
 
+interface R2ObjectBody {
+  body: ReadableStream;
+  httpEtag: string;
+  httpMetadata?: { contentType?: string; cacheControl?: string };
+  customMetadata?: Record<string, string>;
+  writeHttpMetadata(headers: Headers): void;
+}
+
+interface R2PutOptions {
+  httpMetadata?: { contentType?: string; cacheControl?: string };
+  customMetadata?: Record<string, string>;
+}
+
+interface R2Bucket {
+  get(key: string): Promise<R2ObjectBody | null>;
+  put(
+    key: string,
+    value: ReadableStream | ArrayBuffer | ArrayBufferView | string | Blob | null,
+    options?: R2PutOptions,
+  ): Promise<unknown>;
+  list(options?: {
+    prefix?: string;
+    limit?: number;
+    cursor?: string;
+  }): Promise<{ objects: { key: string; uploaded: Date }[]; truncated: boolean; cursor?: string }>;
+}
+
+interface Fetcher {
+  fetch(input: Request | URL | string, init?: RequestInit): Promise<Response>;
+}
+
+declare module "cloudflare:workers" {
   interface PracaEnv {
     DB: D1Database;
     BUCKET: R2Bucket;
@@ -15,7 +46,3 @@ declare module "cloudflare:workers" {
 
   export const env: PracaEnv;
 }
-
-type D1Database = import("@cloudflare/workers-types/index.ts").D1Database;
-type R2Bucket = import("@cloudflare/workers-types/index.ts").R2Bucket;
-type Fetcher = import("@cloudflare/workers-types/index.ts").Fetcher;

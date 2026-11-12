@@ -93,7 +93,7 @@ export async function POST(request: Request) {
         { status: 429 },
       );
 
-    const [{ count: publicationCount = 0 } = { count: 0 }, invited] = user
+    const [publicationRows, invited] = user
       ? await Promise.all([
           db
             .select({ count: sql<number>`count(*)` })
@@ -101,7 +101,8 @@ export async function POST(request: Request) {
             .where(eq(posts.ownerId, user.id)),
           db.select().from(referrals).where(eq(referrals.inviterId, user.id)),
         ])
-      : [{ count: 0 }, []];
+      : [[{ count: 0 }], []];
+    const publicationCount = publicationRows[0]?.count ?? 0;
     const currentPath =
       typeof payload.currentPath === "string" && /^\/[a-z0-9_\-/]*$/i.test(payload.currentPath)
         ? payload.currentPath.slice(0, 180)
@@ -181,27 +182,23 @@ export async function POST(request: Request) {
         })
         .where(eq(assistantUsage.id, usage.id));
     } else {
-      await db
-        .insert(assistantUsage)
-        .values({
-          visitorId: visitor.id,
-          userId: user?.id,
-          dayKey,
-          messages: 1,
-          inputTokens,
-          outputTokens,
-        });
+      await db.insert(assistantUsage).values({
+        visitorId: visitor.id,
+        userId: user?.id,
+        dayKey,
+        messages: 1,
+        inputTokens,
+        outputTokens,
+      });
       usage = { messages: 0 } as typeof usage;
     }
     if (user)
-      await db
-        .insert(activityEvents)
-        .values({
-          userId: user.id,
-          action: "guide_assistant_used",
-          entityType: "assistant",
-          entityId: currentPath,
-        });
+      await db.insert(activityEvents).values({
+        userId: user.id,
+        action: "guide_assistant_used",
+        entityType: "assistant",
+        entityId: currentPath,
+      });
 
     return jsonWithVisitor(
       {

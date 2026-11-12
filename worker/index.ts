@@ -43,8 +43,9 @@ const worker = {
 
     if (url.pathname === "/_vinext/image") {
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];
+      // vinext is typed against @cloudflare/workers-types; this app uses the DOM lib types.
       return handleImageOptimization(
-        request,
+        request as never,
         {
           fetchAsset: (path) => env.ASSETS.fetch(new Request(new URL(path, request.url))),
           transformImage: async (body, { width, format, quality }) => {
@@ -55,10 +56,14 @@ const worker = {
           },
         },
         allowedWidths,
-      );
+      ) as unknown as Promise<Response>;
     }
 
-    return handler.fetch(request, env, ctx);
+    return handler.fetch(
+      request as never,
+      env as never,
+      ctx as never,
+    ) as unknown as Promise<Response>;
   },
 };
 

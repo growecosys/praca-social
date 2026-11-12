@@ -21,7 +21,7 @@ export async function storyRow(db: any, id?: string) {
     : null;
 }
 export async function ensureStory(db: any, now = Date.now()) {
-  let row = await storyRow(db);
+  const row = await storyRow(db);
   if (row) return row;
   const s = newCampaign(now);
   await db
@@ -123,7 +123,7 @@ export async function tickStories(db: any, now = Date.now()) {
     if (clean.phase === "enrollment")
       while (clean.members.length < 6 && clean.waiting.length)
         clean.members.push(clean.waiting.shift()!);
-    let next = advanceCampaign(clean, now);
+    const next = advanceCampaign(clean, now);
     try {
       if (JSON.stringify(next) !== JSON.stringify(s)) {
         const saved = await saveStory(db, next, row.revision);
@@ -230,15 +230,13 @@ export async function storyMessages(db: any, campaignId: string, userId: string)
     )
     .bind(campaignId)
     .all();
-  return result.results
-    .reverse()
-    .map((m: any) => ({
-      id: m.id,
-      author: m.author_id,
-      name: m.deleted_at ? "Conta excluída" : m.display_name,
-      body: m.deleted_at ? "Mensagem indisponível." : m.body,
-      at: m.created_ms,
-    }));
+  return result.results.reverse().map((m: any) => ({
+    id: m.id,
+    author: m.author_id,
+    name: m.deleted_at ? "Conta excluída" : m.display_name,
+    body: m.deleted_at ? "Mensagem indisponível." : m.body,
+    at: m.created_ms,
+  }));
 }
 export async function sendStoryMessage(
   db: any,

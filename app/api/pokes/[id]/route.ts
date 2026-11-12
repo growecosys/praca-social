@@ -72,19 +72,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         eq(notifications.dedupeKey, `connection:${id}`),
       ),
     );
-  await db
-    .insert(activityEvents)
-    .values({
-      userId: auth.user!.id,
-      action: `poke_${status}`,
-      entityType: "poke",
-      entityId: String(id),
-      metadataJson: JSON.stringify({
-        senderUsername: poke.senderUsername,
-        kind: poke.kind,
-        userAction: payload.action,
-      }),
-    });
+  await db.insert(activityEvents).values({
+    userId: auth.user!.id,
+    action: `poke_${status}`,
+    entityType: "poke",
+    entityId: String(id),
+    metadataJson: JSON.stringify({
+      senderUsername: poke.senderUsername,
+      kind: poke.kind,
+      userAction: payload.action,
+    }),
+  });
   const href =
     poke.kind === "opinion" && poke.targetSlug
       ? `/p/${poke.targetSlug}#comment-body`

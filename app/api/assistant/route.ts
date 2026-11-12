@@ -179,26 +179,22 @@ export async function POST(request: Request) {
       message: string;
       blocks: Array<{ type: ContentBlock["type"]; text: string; url: string; caption: string }>;
     };
-    await getDb()
-      .insert(activityEvents)
-      .values({
-        userId: user.id,
-        action: "assistant_used",
-        entityType: "assistant",
-        entityId: action,
-      });
+    await getDb().insert(activityEvents).values({
+      userId: user.id,
+      action: "assistant_used",
+      entityType: "assistant",
+      entityId: action,
+    });
     return Response.json({
       title: result.title.slice(0, 180),
       message: result.message.slice(0, 2_000),
-      blocks: result.blocks
-        .slice(0, 80)
-        .map((block) => ({
-          id: crypto.randomUUID(),
-          type: block.type,
-          text: block.text.slice(0, 30_000),
-          url: block.url.slice(0, 2_048),
-          caption: block.caption.slice(0, 500),
-        })),
+      blocks: result.blocks.slice(0, 80).map((block) => ({
+        id: crypto.randomUUID(),
+        type: block.type,
+        text: block.text.slice(0, 30_000),
+        url: block.url.slice(0, 2_048),
+        caption: block.caption.slice(0, 500),
+      })),
     });
   } catch (error) {
     return Response.json(

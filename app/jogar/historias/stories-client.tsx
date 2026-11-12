@@ -133,7 +133,9 @@ export default function StoriesClient({ userId }: { userId: string | null }) {
               : c.layout < 4,
   );
   const pending = me?.pending,
-    action = pending && STORY_ACTIONS.find((a) => a.id === pending.action);
+    action: (typeof STORY_ACTIONS)[number] | undefined = pending
+      ? STORY_ACTIONS.find((a) => a.id === pending.action)
+      : undefined;
   return (
     <>
       {err}

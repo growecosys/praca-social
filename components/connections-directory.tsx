@@ -1,3 +1,4 @@
+import Link from "next/link";
 import NatureSpot from "./nature-spot";
 import type { connectionNetwork } from "../lib/connection-network";
 type Data = Awaited<ReturnType<typeof connectionNetwork>>;
@@ -122,12 +123,12 @@ export default function ConnectionsDirectory({
         <h2 className="font-serif text-3xl">
           Seus círculos <span className="text-xl text-[#667064]">· {own.length}</span>
         </h2>
-        <a
+        <Link
           href="/circulos/novo"
           className="inline-flex min-h-11 items-center rounded-lg bg-[#f0c64b] px-4 text-sm font-semibold"
         >
           + Criar círculo
-        </a>
+        </Link>
       </div>
       {cards(compact ? own.slice(0, 3) : own)}
       {!own.length && (

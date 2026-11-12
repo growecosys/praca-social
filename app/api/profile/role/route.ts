@@ -36,9 +36,8 @@ export async function POST(request: Request) {
   try {
     payload = await request.json();
   } catch {}
-  const answers = (payload.answers || JSON.parse(user.answersJson || "[]")).map((answer) =>
-    normalize(String(answer)),
-  );
+  const rawAnswers: unknown[] = payload.answers || JSON.parse(user.answersJson || "[]");
+  const answers = rawAnswers.map((answer) => normalize(String(answer)));
   if (
     answers.length !== 5 ||
     answers.some((answer) => words(answer).length !== 3 || answer.length > 80)

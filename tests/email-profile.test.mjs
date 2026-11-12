@@ -92,7 +92,7 @@ test("email links: hash-only tokens, expiry, browser binding, account linking, s
   const { d, db } = await setup(),
     m = await load("lib/email-access.ts"),
     env = { RESEND_API_KEY: "fake-test-key", AUTH_EMAIL_FROM: "test@example.test" };
-  let messages = [];
+  const messages = [];
   const send = async (url, init) => {
     assert.equal(url, "https://api.resend.com/emails");
     messages.push(JSON.parse(init.body));
@@ -126,7 +126,7 @@ test("email links: hash-only tokens, expiry, browser binding, account linking, s
   assert.equal(linked.linked, true);
   await assert.rejects(m.redeemEmailAccess(db, token, nonce, "a", create));
   await m.requestEmailAccess(db, env, "ana@example.test", "login", null, nonce, "2", send);
-  let login = messages.at(-1).text.match(/token=([a-f0-9]{64})/)[1];
+  const login = messages.at(-1).text.match(/token=([a-f0-9]{64})/)[1];
   const results = await Promise.allSettled([
     m.redeemEmailAccess(db, login, nonce, null, create),
     m.redeemEmailAccess(db, login, nonce, null, create),

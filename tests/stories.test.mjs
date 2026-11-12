@@ -34,7 +34,7 @@ function group(n = 3) {
   return r.advanceCampaign(s, start);
 }
 function action(s, id, key, now = start + 10, dice = [1, 1]) {
-  let n = r.mutateCampaign(s, account(id), { op: "prepare", action: key }, now);
+  const n = r.mutateCampaign(s, account(id), { op: "prepare", action: key }, now);
   return r.mutateCampaign(
     n,
     account(id),
@@ -215,7 +215,7 @@ test("departure is explicit, removes votes, and an empty group closes without co
   assert.ok(s.members.every((m) => m.left));
 });
 test("real and fictional preparations have equivalent bounded rewards and private notes stay out of others views", () => {
-  let s = group(),
+  const s = group(),
     p = {
       op: "activity",
       skill: "cuidar",

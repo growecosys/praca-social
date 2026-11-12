@@ -129,15 +129,13 @@ async function awardPreviousWeek(data: any) {
     .update(users)
     .set({ generationsUsed: 0, updatedAt: sql`CURRENT_TIMESTAMP` })
     .where(eq(users.id, winner.id));
-  await db
-    .insert(activityEvents)
-    .values({
-      userId: winner.id,
-      action: "weekly_leader_reward",
-      entityType: "weekly_reward",
-      entityId: week.key,
-      metadataJson: JSON.stringify({ score: winner.score, roleCreditsReset: true }),
-    });
+  await db.insert(activityEvents).values({
+    userId: winner.id,
+    action: "weekly_leader_reward",
+    entityType: "weekly_reward",
+    entityId: week.key,
+    metadataJson: JSON.stringify({ score: winner.score, roleCreditsReset: true }),
+  });
   await db
     .insert(notifications)
     .values({

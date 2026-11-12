@@ -129,24 +129,20 @@ export async function POST(
     })
     .returning({ id: pokes.id });
   await Promise.all([
-    db
-      .insert(activityEvents)
-      .values({
-        userId: sender.id,
-        action: "poke_sent",
-        entityType: "user",
-        entityId: recipient.id,
-        metadataJson: JSON.stringify({ username: recipient.username, kind, targetSlug }),
-      }),
-    db
-      .insert(activityEvents)
-      .values({
-        userId: recipient.id,
-        action: "poke_received",
-        entityType: "user",
-        entityId: sender.id,
-        metadataJson: JSON.stringify({ username: sender.username, kind, targetSlug }),
-      }),
+    db.insert(activityEvents).values({
+      userId: sender.id,
+      action: "poke_sent",
+      entityType: "user",
+      entityId: recipient.id,
+      metadataJson: JSON.stringify({ username: recipient.username, kind, targetSlug }),
+    }),
+    db.insert(activityEvents).values({
+      userId: recipient.id,
+      action: "poke_received",
+      entityType: "user",
+      entityId: sender.id,
+      metadataJson: JSON.stringify({ username: sender.username, kind, targetSlug }),
+    }),
   ]);
   const copy = COPY[kind];
   await notify({
