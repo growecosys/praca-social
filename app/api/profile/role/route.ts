@@ -36,8 +36,8 @@ export async function POST(request: Request) {
   try {
     payload = await request.json();
   } catch {}
-  const answers = (payload.answers || JSON.parse(user.answersJson || "[]")).map(
-    (answer) => normalize(String(answer)),
+  const answers = (payload.answers || JSON.parse(user.answersJson || "[]")).map((answer) =>
+    normalize(String(answer)),
   );
   if (
     answers.length !== 5 ||
@@ -146,26 +146,19 @@ export async function PATCH(request: Request) {
       .from(activityEvents)
       .where(eq(activityEvents.userId, user.id));
     const recorded = historicalEvents.some((event) => {
-      if (!["profile_completed", "role_regenerated"].includes(event.action))
-        return false;
+      if (!["profile_completed", "role_regenerated"].includes(event.action)) return false;
       try {
         const metadata = JSON.parse(event.metadataJson) as {
           roleTitle?: string;
           previousRoleTitle?: string;
         };
-        return (
-          metadata.roleTitle === roleTitle ||
-          metadata.previousRoleTitle === roleTitle
-        );
+        return metadata.roleTitle === roleTitle || metadata.previousRoleTitle === roleTitle;
       } catch {
         return false;
       }
     });
     if (!roleTitle || !recorded)
-      return Response.json(
-        { error: "Registro histórico não encontrado." },
-        { status: 404 },
-      );
+      return Response.json({ error: "Registro histórico não encontrado." }, { status: 404 });
     const answers = JSON.parse(user.answersJson || "[]") as string[];
     const identity = await reconstructLegacyIdentity(roleTitle, answers);
     const generationId = crypto.randomUUID();
@@ -208,30 +201,19 @@ export async function PATCH(request: Request) {
     });
     return Response.json({ ok: true, reconstructed: true });
   }
-  if (
-    !payload.generationId ||
-    !["apply", "reject", "select"].includes(payload.action || "")
-  )
+  if (!payload.generationId || !["apply", "reject", "select"].includes(payload.action || ""))
     return Response.json({ error: "Ação inválida." }, { status: 400 });
   const condition =
     payload.action === "select"
-      ? and(
-          eq(roleGenerations.id, payload.generationId),
-          eq(roleGenerations.userId, user.id),
-        )
+      ? and(eq(roleGenerations.id, payload.generationId), eq(roleGenerations.userId, user.id))
       : and(
           eq(roleGenerations.id, payload.generationId),
           eq(roleGenerations.userId, user.id),
           eq(roleGenerations.status, "pending"),
         );
-  const generation = (
-    await db.select().from(roleGenerations).where(condition).limit(1)
-  )[0];
+  const generation = (await db.select().from(roleGenerations).where(condition).limit(1))[0];
   if (!generation)
-    return Response.json(
-      { error: "Esta versão não está mais disponível." },
-      { status: 404 },
-    );
+    return Response.json({ error: "Esta versão não está mais disponível." }, { status: 404 });
   if (payload.action === "apply" || payload.action === "select")
     await db
       .update(users)

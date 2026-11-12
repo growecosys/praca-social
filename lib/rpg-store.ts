@@ -1,19 +1,120 @@
-import {RpgError,initialRpg,resolve,recordActivity,available,type RpgState,type Skill,type Proposal} from './rpg';
-export async function readRpg(db:any,userId:string){const row=await db.prepare('SELECT state_json,revision FROM rpg_characters WHERE user_id=?').bind(userId).first();return row?{state:JSON.parse(row.state_json) as RpgState,revision:row.revision as number}:null;}
-async function active(db:any,userId:string){if(!await db.prepare('SELECT id FROM users WHERE id=? AND deleted_at IS NULL').bind(userId).first())throw new RpgError('Entre novamente para jogar.',401);}
-export async function startRpg(db:any,userId:string,role:string,talent:Skill){await active(db,userId);await db.prepare('INSERT INTO rpg_characters(user_id,state_json) VALUES(?,?) ON CONFLICT(user_id) DO NOTHING').bind(userId,JSON.stringify(initialRpg(role,talent))).run();return readRpg(db,userId);}
-export async function saveRpg(db:any,userId:string,revision:number,state:RpgState){
- const encoded=JSON.stringify(state);const queries=[db.prepare('UPDATE rpg_characters SET state_json=?,revision=revision+1,updated_at=CURRENT_TIMESTAMP WHERE user_id=? AND revision=? AND EXISTS(SELECT 1 FROM users WHERE id=? AND deleted_at IS NULL)').bind(encoded,userId,revision,userId)];
- for(const [key,xp,earned] of [['first-test',5,state.turn>0],['chapter-one',20,state.ended]] as const){if(earned)queries.push(db.prepare("INSERT INTO game_achievements(user_id,game_id,key,xp,run_id) SELECT user_id,'rpg',?,?, 'rpg-chapter-one' FROM rpg_characters WHERE user_id=? AND revision=? AND state_json=? ON CONFLICT(user_id,game_id,key) DO NOTHING").bind(key,xp,userId,revision+1,encoded));}
- const result=await db.batch(queries);if(!result[0].meta.changes)throw new RpgError('A aventura mudou em outra aba. Atualize antes de continuar.',409);return {state,revision:revision+1};
+import {
+  RpgError,
+  initialRpg,
+  resolve,
+  recordActivity,
+  available,
+  type RpgState,
+  type Skill,
+  type Proposal,
+} from "./rpg";
+export async function readRpg(db: any, userId: string) {
+  const row = await db
+    .prepare("SELECT state_json,revision FROM rpg_characters WHERE user_id=?")
+    .bind(userId)
+    .first();
+  return row
+    ? { state: JSON.parse(row.state_json) as RpgState, revision: row.revision as number }
+    : null;
 }
-export async function reserveRpgCall(db:any,userId:string,day:string){await active(db,userId);const r=await db.prepare('INSERT INTO rpg_usage(user_id,day,calls) VALUES(?,?,1) ON CONFLICT(user_id,day) DO UPDATE SET calls=calls+1 WHERE calls<30 RETURNING calls').bind(userId,day).first();if(!r)throw new RpgError('Você usou as 30 intervenções de IA de hoje. As ações sugeridas e os dados continuam disponíveis.',429);return 30-r.calls;}
-export async function mutateRpg(db:any,userId:string,p:any,dice?:number[]){await active(db,userId);const row=await readRpg(db,userId);if(!row)throw new RpgError('Crie sua ficha primeiro.',404);if(p.revision!==row.revision)throw new RpgError('Atualize a aventura antes de continuar.',409);let s=structuredClone(row.state);
- if(p.op==='roll')s=resolve(s,p.id,dice||[],p.focus===true);
- else if(p.op==='cancel'){if(!s.pending||s.pending.id!==p.id)throw new RpgError('Ação indisponível.',409);s.pending=null;}
- else if(p.op==='discard'){if(!s.boon||s.pending||s.ended)throw new RpgError('Não há preparação disponível para guardar.');s.boon=null;}
- else if(p.op==='activity')s=recordActivity(s,p.activity,p.mode,typeof p.note==='string'?p.note:'');
- else if(p.op==='suggestion'){if(s.pending||s.ended)throw new RpgError('Resolva a ação atual primeiro.',409);const a=available(s).find(a=>a.id===p.action);if(!a)throw new RpgError('Ação indisponível.');s.pending={id:crypto.randomUUID(),action:a.id,intent:a.label,text:'Você escolheu uma ação sugerida. Confira o efeito e o risco antes de lançar os dados.'};s.journal.push({who:'jogador',text:a.label});}
- else throw new RpgError('Operação inválida.');return saveRpg(db,userId,row.revision,s);
+async function active(db: any, userId: string) {
+  if (
+    !(await db
+      .prepare("SELECT id FROM users WHERE id=? AND deleted_at IS NULL")
+      .bind(userId)
+      .first())
+  )
+    throw new RpgError("Entre novamente para jogar.", 401);
 }
-export function attachProposal(s:RpgState,intent:string,p:Proposal|null,text:string){if(s.pending||s.ended)throw new RpgError('Resolva a ação atual primeiro.',409);if(p&&!available(s).some(a=>a.id===p.action))throw new RpgError('O mestre sugeriu uma ação indisponível. Tente reformular.',502);const n=structuredClone(s);n.pending=p;n.journal.push({who:'jogador',text:intent},{who:'mestre',text});return n;}
+export async function startRpg(db: any, userId: string, role: string, talent: Skill) {
+  await active(db, userId);
+  await db
+    .prepare(
+      "INSERT INTO rpg_characters(user_id,state_json) VALUES(?,?) ON CONFLICT(user_id) DO NOTHING",
+    )
+    .bind(userId, JSON.stringify(initialRpg(role, talent)))
+    .run();
+  return readRpg(db, userId);
+}
+export async function saveRpg(db: any, userId: string, revision: number, state: RpgState) {
+  const encoded = JSON.stringify(state);
+  const queries = [
+    db
+      .prepare(
+        "UPDATE rpg_characters SET state_json=?,revision=revision+1,updated_at=CURRENT_TIMESTAMP WHERE user_id=? AND revision=? AND EXISTS(SELECT 1 FROM users WHERE id=? AND deleted_at IS NULL)",
+      )
+      .bind(encoded, userId, revision, userId),
+  ];
+  for (const [key, xp, earned] of [
+    ["first-test", 5, state.turn > 0],
+    ["chapter-one", 20, state.ended],
+  ] as const) {
+    if (earned)
+      queries.push(
+        db
+          .prepare(
+            "INSERT INTO game_achievements(user_id,game_id,key,xp,run_id) SELECT user_id,'rpg',?,?, 'rpg-chapter-one' FROM rpg_characters WHERE user_id=? AND revision=? AND state_json=? ON CONFLICT(user_id,game_id,key) DO NOTHING",
+          )
+          .bind(key, xp, userId, revision + 1, encoded),
+      );
+  }
+  const result = await db.batch(queries);
+  if (!result[0].meta.changes)
+    throw new RpgError("A aventura mudou em outra aba. Atualize antes de continuar.", 409);
+  return { state, revision: revision + 1 };
+}
+export async function reserveRpgCall(db: any, userId: string, day: string) {
+  await active(db, userId);
+  const r = await db
+    .prepare(
+      "INSERT INTO rpg_usage(user_id,day,calls) VALUES(?,?,1) ON CONFLICT(user_id,day) DO UPDATE SET calls=calls+1 WHERE calls<30 RETURNING calls",
+    )
+    .bind(userId, day)
+    .first();
+  if (!r)
+    throw new RpgError(
+      "Você usou as 30 intervenções de IA de hoje. As ações sugeridas e os dados continuam disponíveis.",
+      429,
+    );
+  return 30 - r.calls;
+}
+export async function mutateRpg(db: any, userId: string, p: any, dice?: number[]) {
+  await active(db, userId);
+  const row = await readRpg(db, userId);
+  if (!row) throw new RpgError("Crie sua ficha primeiro.", 404);
+  if (p.revision !== row.revision)
+    throw new RpgError("Atualize a aventura antes de continuar.", 409);
+  let s = structuredClone(row.state);
+  if (p.op === "roll") s = resolve(s, p.id, dice || [], p.focus === true);
+  else if (p.op === "cancel") {
+    if (!s.pending || s.pending.id !== p.id) throw new RpgError("Ação indisponível.", 409);
+    s.pending = null;
+  } else if (p.op === "discard") {
+    if (!s.boon || s.pending || s.ended)
+      throw new RpgError("Não há preparação disponível para guardar.");
+    s.boon = null;
+  } else if (p.op === "activity")
+    s = recordActivity(s, p.activity, p.mode, typeof p.note === "string" ? p.note : "");
+  else if (p.op === "suggestion") {
+    if (s.pending || s.ended) throw new RpgError("Resolva a ação atual primeiro.", 409);
+    const a = available(s).find((a) => a.id === p.action);
+    if (!a) throw new RpgError("Ação indisponível.");
+    s.pending = {
+      id: crypto.randomUUID(),
+      action: a.id,
+      intent: a.label,
+      text: "Você escolheu uma ação sugerida. Confira o efeito e o risco antes de lançar os dados.",
+    };
+    s.journal.push({ who: "jogador", text: a.label });
+  } else throw new RpgError("Operação inválida.");
+  return saveRpg(db, userId, row.revision, s);
+}
+export function attachProposal(s: RpgState, intent: string, p: Proposal | null, text: string) {
+  if (s.pending || s.ended) throw new RpgError("Resolva a ação atual primeiro.", 409);
+  if (p && !available(s).some((a) => a.id === p.action))
+    throw new RpgError("O mestre sugeriu uma ação indisponível. Tente reformular.", 502);
+  const n = structuredClone(s);
+  n.pending = p;
+  n.journal.push({ who: "jogador", text: intent }, { who: "mestre", text });
+  return n;
+}

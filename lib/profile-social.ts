@@ -14,10 +14,7 @@ import {
 } from "../db/schema";
 import { earnedBadges } from "./badges";
 
-export async function getProfileSocial(user: {
-  id: string;
-  avatarImageKey: string | null;
-}) {
+export async function getProfileSocial(user: { id: string; avatarImageKey: string | null }) {
   const db = getDb();
   const [
     publications,
@@ -30,11 +27,7 @@ export async function getProfileSocial(user: {
     allShareVisits,
     invitedPeople,
   ] = await Promise.all([
-    db
-      .select()
-      .from(posts)
-      .where(eq(posts.ownerId, user.id))
-      .orderBy(desc(posts.createdAt)),
+    db.select().from(posts).where(eq(posts.ownerId, user.id)).orderBy(desc(posts.createdAt)),
     db.select().from(likes),
     db.select().from(comments),
     db.select().from(shareLinks),
@@ -68,12 +61,9 @@ export async function getProfileSocial(user: {
     sharesReceived: allShares.filter((item) => ids.has(item.postId)).length,
     uniqueViews: allViews.filter((item) => ids.has(item.postId)).length,
     linkVisitors: allShareVisits.filter((visit) =>
-      allShares.some(
-        (link) => link.id === visit.shareLinkId && link.userId === user.id,
-      ),
+      allShares.some((link) => link.id === visit.shareLinkId && link.userId === user.id),
     ).length,
-    peopleAttracted: invitedPeople.filter((item) => Boolean(item.qualifiedAt))
-      .length,
+    peopleAttracted: invitedPeople.filter((item) => Boolean(item.qualifiedAt)).length,
     pokesReceived: receivedPokes.length,
     hasGeneratedAvatar: generatedAvatars.length > 0,
   };

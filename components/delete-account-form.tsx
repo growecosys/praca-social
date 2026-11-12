@@ -1,16 +1,140 @@
-'use client';
-import {useEffect,useRef,useState} from 'react';
-import {Trash2} from 'lucide-react';
-export default function DeleteAccountForm(){
- const dialog=useRef<HTMLDialogElement>(null),[open,setOpen]=useState(false),[confirmation,setConfirmation]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('');
- useEffect(()=>{if(open&&!dialog.current?.open)dialog.current?.showModal();else if(!open&&dialog.current?.open)dialog.current.close();},[open]);
- function close(){if(busy)return;setOpen(false);setConfirmation('');setError('');setMessage('');}
- async function request(){
-  if(busy)return;setBusy(true);setError('');setMessage('');try{const r=await fetch('/api/auth/delete-account',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({confirmation})});const d=await r.json();if(!r.ok)throw Error(d.error||'Não foi possível concluir.');{
-   try{for(const key of Object.keys(localStorage))if(key.startsWith('praca_')||key.startsWith('praca-'))localStorage.removeItem(key);sessionStorage.clear();}catch{}
-   window.location.replace(d.next);return;
-  }}catch(e){setError(e instanceof Error?e.message:'Falha de conexão. Tente novamente.');}finally{setBusy(false);}
- }
- return <section className="mx-auto my-10 max-w-6xl px-5 sm:px-8" data-no-translate><div className="rounded-sm border-2 border-[#9b3a2f] bg-[#fff1ed] p-5 text-[#70261f]"><h2 className="font-serif text-2xl">Excluir conta</h2><p className="my-3 max-w-2xl text-sm leading-6">Encerre seu acesso e remova seu perfil. O conteúdo publicado e os registros comunitários permanecem com autoria “Conta excluída”.</p><button type="button" onClick={()=>setOpen(true)} className="inline-flex min-h-12 items-center gap-2 bg-[#a52f24] px-5 py-3 font-semibold text-white"><Trash2 size={18}/>Excluir minha conta</button></div>
- <dialog ref={dialog} onCancel={e=>{e.preventDefault();close();}} onClose={()=>{if(!busy)close();}} aria-labelledby="delete-account-title" className="m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg overflow-y-auto border-2 border-[#9b3a2f] bg-[#fff8f3] p-6 text-[#1f241d] backdrop:bg-black/50"><h2 id="delete-account-title" className="font-serif text-3xl text-[#8a3329]">Excluir sua conta?</h2><p className="mt-4 text-sm leading-6">Seu perfil, e-mail, senha e respostas das perguntas serão removidos, e todas as sessões serão encerradas. Esta ação não pode ser desfeita.</p><p className="mt-3 text-sm leading-6">Publicações, comentários e registros comunitários serão preservados como “Conta excluída”. O texto que você publicou não será apagado.</p><form onSubmit={e=>{e.preventDefault();if(confirmation==='DELETAR CONTA')request();}} className="mt-5 space-y-4"><label className="block text-sm font-semibold">Para confirmar, escreva DELETAR CONTA<input autoComplete="off" autoCapitalize="characters" spellCheck={false} value={confirmation} onChange={e=>setConfirmation(e.target.value)} required disabled={busy} className="mt-2 block w-full border-2 border-[#9b3a2f] bg-white p-3"/></label>{error&&<p role="alert" className="text-sm text-red-800">{error}</p>}{message&&<p role="status" className="text-sm">{message}</p>}<div className="flex flex-wrap gap-3"><button type="button" onClick={close} disabled={busy} className="min-h-12 border border-[#bdb5a7] px-5 py-3 font-semibold">Cancelar e manter conta</button><button disabled={busy||confirmation!=='DELETAR CONTA'} className="min-h-12 bg-[#a52f24] px-5 py-3 font-semibold text-white disabled:opacity-35">{busy?'Aguarde…':'Excluir conta definitivamente'}</button></div></form></dialog></section>;
+"use client";
+import { useEffect, useRef, useState } from "react";
+import { Trash2 } from "lucide-react";
+export default function DeleteAccountForm() {
+  const dialog = useRef<HTMLDialogElement>(null),
+    [open, setOpen] = useState(false),
+    [confirmation, setConfirmation] = useState(""),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState(""),
+    [message, setMessage] = useState("");
+  useEffect(() => {
+    if (open && !dialog.current?.open) dialog.current?.showModal();
+    else if (!open && dialog.current?.open) dialog.current.close();
+  }, [open]);
+  function close() {
+    if (busy) return;
+    setOpen(false);
+    setConfirmation("");
+    setError("");
+    setMessage("");
+  }
+  async function request() {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const r = await fetch("/api/auth/delete-account", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ confirmation }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw Error(d.error || "Não foi possível concluir.");
+      {
+        try {
+          for (const key of Object.keys(localStorage))
+            if (key.startsWith("praca_") || key.startsWith("praca-")) localStorage.removeItem(key);
+          sessionStorage.clear();
+        } catch {}
+        window.location.replace(d.next);
+        return;
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Falha de conexão. Tente novamente.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <section className="mx-auto my-10 max-w-6xl px-5 sm:px-8" data-no-translate>
+      <div className="rounded-sm border-2 border-[#9b3a2f] bg-[#fff1ed] p-5 text-[#70261f]">
+        <h2 className="font-serif text-2xl">Excluir conta</h2>
+        <p className="my-3 max-w-2xl text-sm leading-6">
+          Encerre seu acesso e remova seu perfil. O conteúdo publicado e os registros comunitários
+          permanecem com autoria “Conta excluída”.
+        </p>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="inline-flex min-h-12 items-center gap-2 bg-[#a52f24] px-5 py-3 font-semibold text-white"
+        >
+          <Trash2 size={18} />
+          Excluir minha conta
+        </button>
+      </div>
+      <dialog
+        ref={dialog}
+        onCancel={(e) => {
+          e.preventDefault();
+          close();
+        }}
+        onClose={() => {
+          if (!busy) close();
+        }}
+        aria-labelledby="delete-account-title"
+        className="m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg overflow-y-auto border-2 border-[#9b3a2f] bg-[#fff8f3] p-6 text-[#1f241d] backdrop:bg-black/50"
+      >
+        <h2 id="delete-account-title" className="font-serif text-3xl text-[#8a3329]">
+          Excluir sua conta?
+        </h2>
+        <p className="mt-4 text-sm leading-6">
+          Seu perfil, e-mail, senha e respostas das perguntas serão removidos, e todas as sessões
+          serão encerradas. Esta ação não pode ser desfeita.
+        </p>
+        <p className="mt-3 text-sm leading-6">
+          Publicações, comentários e registros comunitários serão preservados como “Conta excluída”.
+          O texto que você publicou não será apagado.
+        </p>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (confirmation === "DELETAR CONTA") request();
+          }}
+          className="mt-5 space-y-4"
+        >
+          <label className="block text-sm font-semibold">
+            Para confirmar, escreva DELETAR CONTA
+            <input
+              autoComplete="off"
+              autoCapitalize="characters"
+              spellCheck={false}
+              value={confirmation}
+              onChange={(e) => setConfirmation(e.target.value)}
+              required
+              disabled={busy}
+              className="mt-2 block w-full border-2 border-[#9b3a2f] bg-white p-3"
+            />
+          </label>
+          {error && (
+            <p role="alert" className="text-sm text-red-800">
+              {error}
+            </p>
+          )}
+          {message && (
+            <p role="status" className="text-sm">
+              {message}
+            </p>
+          )}
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={close}
+              disabled={busy}
+              className="min-h-12 border border-[#bdb5a7] px-5 py-3 font-semibold"
+            >
+              Cancelar e manter conta
+            </button>
+            <button
+              disabled={busy || confirmation !== "DELETAR CONTA"}
+              className="min-h-12 bg-[#a52f24] px-5 py-3 font-semibold text-white disabled:opacity-35"
+            >
+              {busy ? "Aguarde…" : "Excluir conta definitivamente"}
+            </button>
+          </div>
+        </form>
+      </dialog>
+    </section>
+  );
 }

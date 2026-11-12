@@ -48,10 +48,7 @@ function date(value: string) {
 export default function ActivityTrail({ events }: { events: Event[] }) {
   const [filter, setFilter] = useState("all");
   const visible = useMemo(
-    () =>
-      events.filter(
-        (event) => filter === "all" || group(event.action) === filter,
-      ),
+    () => events.filter((event) => filter === "all" || group(event.action) === filter),
     [events, filter],
   );
   return (
@@ -91,15 +88,11 @@ export default function ActivityTrail({ events }: { events: Event[] }) {
                 <span className="text-sm">
                   {labels[event.action] || event.action.replaceAll("_", " ")}
                 </span>
-                <time className="text-xs text-[#667064]">
-                  {date(event.createdAt)}
-                </time>
+                <time className="text-xs text-[#667064]">{date(event.createdAt)}</time>
               </div>
             ))
           ) : (
-            <p className="py-5 text-sm text-[#667064]">
-              Nenhum evento neste filtro.
-            </p>
+            <p className="py-5 text-sm text-[#667064]">Nenhum evento neste filtro.</p>
           )}
         </div>
       </div>

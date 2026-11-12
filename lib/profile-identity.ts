@@ -76,7 +76,7 @@ const symbolDefinitions = {
   ponte: "mediação ou travessia real entre lados separados",
   semente: "cultivo, começo, propagação ou paciência",
   chave: "acesso, desbloqueio, revelação ou solução",
-  "faísca": "provocação, ruptura, mobilização ou início súbito",
+  faísca: "provocação, ruptura, mobilização ou início súbito",
   espiral: "transformação, recorrência, complexidade ou aprendizagem",
 };
 
@@ -95,7 +95,11 @@ function first(value: string) {
 }
 
 function firstWord(value: string) {
-  return first(value).split(/\s+/)[0]?.replace(/[^\p{L}\p{N}-]/gu, "") || "Comum";
+  return (
+    first(value)
+      .split(/\s+/)[0]
+      ?.replace(/[^\p{L}\p{N}-]/gu, "") || "Comum"
+  );
 }
 
 function normalizeRoleTitle(value: unknown, fallbackTitle: string) {
@@ -125,23 +129,14 @@ function fallback(answers: string[]) {
     .split("")
     .reduce((sum, character) => sum + character.charCodeAt(0), 0);
   const offices = ["Ouvidor", "Síndico", "Fiscal", "Ministro"];
-  const tensions = [
-    "Inconveniente",
-    "Provisório",
-    "Extraoficial",
-    "Improvável",
-  ];
+  const tensions = ["Inconveniente", "Provisório", "Extraoficial", "Improvável"];
   const symbol = symbols[seed % symbols.length];
   return {
     roleTitle: `${offices[seed % offices.length]} ${tensions[(seed + 1) % tensions.length]} ${firstWord(mapping.causa)}`,
     manifesto: `Organiza ${first(mapping.metodo)} contra ${first(mapping.adversario)}, para que ${first(mapping.horizonte)} deixe de ser desculpa.`,
     symbol,
     symbolMeaning: symbolDefinitions[symbol],
-    colors: [
-      colors[seed % colors.length],
-      colors[(seed + 2) % colors.length],
-      "#f5f1e8",
-    ],
+    colors: [colors[seed % colors.length], colors[(seed + 2) % colors.length], "#f5f1e8"],
     mapping,
     roleComponents: {
       semanticAnchor: `${first(mapping.metodo)} em defesa de ${first(mapping.causa)}`,
@@ -295,14 +290,7 @@ Prioridades: 1) fidelidade às cinco respostas; 2) contradição reconhecível; 
           action: { type: "string" },
           satiricalDetail: { type: "string" },
         },
-        required: [
-          "symbol",
-          "symbolMeaning",
-          "colors",
-          "character",
-          "action",
-          "satiricalDetail",
-        ],
+        required: ["symbol", "symbolMeaning", "colors", "character", "action", "satiricalDetail"],
         additionalProperties: false,
       };
       const visualResponse = await fetch("https://api.openai.com/v1/responses", {
@@ -354,10 +342,7 @@ As três cores devem ser códigos hexadecimais válidos e distintos. O personage
   return identity;
 }
 
-export async function reconstructLegacyIdentity(
-  roleTitle: string,
-  answers: string[],
-) {
+export async function reconstructLegacyIdentity(roleTitle: string, answers: string[]) {
   const fallbackIdentity = {
     manifesto:
       "Versão recuperada do arquivo da Praça e reconstruída a partir dos sinais originais.",

@@ -1,3 +1,43 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {readFile} from 'node:fs/promises';import {transformWithEsbuild} from 'vite';
-const {code}=await transformWithEsbuild(await readFile('lib/editor-history.ts','utf8'),'history.ts',{loader:'ts',target:'esnext'});const {commitHistory,stepHistory}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
-test('undo and redo restore document, block identity and order; new edits discard future and typing coalesces',()=>{const a={title:'A',blocks:[{id:'a',text:'original'},{id:'b',url:'/photo'}]},b={title:'B',blocks:[a.blocks[1],a.blocks[0]]},c={title:'C',blocks:[a.blocks[0]]};let h={past:[],present:a,future:[]};h=commitHistory(h,b);h=commitHistory(h,c);h=stepHistory(h,'undo');assert.deepEqual(h.present,b);h=stepHistory(h,'undo');assert.deepEqual(h.present,a);h=stepHistory(h,'redo');assert.deepEqual(h.present,b);h=stepHistory(h,'redo');assert.deepEqual(h.present,c);assert.equal(stepHistory(h,'redo'),h);h=stepHistory(h,'undo');h=commitHistory(h,{...b,title:'new'});assert.equal(h.future.length,0);h=commitHistory(h,{...b,title:'new typing'},true);h=stepHistory(h,'undo');assert.deepEqual(h.present,b);const restored=JSON.parse(JSON.stringify(h));assert.deepEqual(stepHistory(restored,'redo').present.title,'new typing');});
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { transformWithEsbuild } from "vite";
+const { code } = await transformWithEsbuild(
+  await readFile("lib/editor-history.ts", "utf8"),
+  "history.ts",
+  { loader: "ts", target: "esnext" },
+);
+const { commitHistory, stepHistory } = await import(
+  "data:text/javascript;base64," + Buffer.from(code).toString("base64")
+);
+test("undo and redo restore document, block identity and order; new edits discard future and typing coalesces", () => {
+  const a = {
+      title: "A",
+      blocks: [
+        { id: "a", text: "original" },
+        { id: "b", url: "/photo" },
+      ],
+    },
+    b = { title: "B", blocks: [a.blocks[1], a.blocks[0]] },
+    c = { title: "C", blocks: [a.blocks[0]] };
+  let h = { past: [], present: a, future: [] };
+  h = commitHistory(h, b);
+  h = commitHistory(h, c);
+  h = stepHistory(h, "undo");
+  assert.deepEqual(h.present, b);
+  h = stepHistory(h, "undo");
+  assert.deepEqual(h.present, a);
+  h = stepHistory(h, "redo");
+  assert.deepEqual(h.present, b);
+  h = stepHistory(h, "redo");
+  assert.deepEqual(h.present, c);
+  assert.equal(stepHistory(h, "redo"), h);
+  h = stepHistory(h, "undo");
+  h = commitHistory(h, { ...b, title: "new" });
+  assert.equal(h.future.length, 0);
+  h = commitHistory(h, { ...b, title: "new typing" }, true);
+  h = stepHistory(h, "undo");
+  assert.deepEqual(h.present, b);
+  const restored = JSON.parse(JSON.stringify(h));
+  assert.deepEqual(stepHistory(restored, "redo").present.title, "new typing");
+});

@@ -1,14 +1,85 @@
-import {initialGame,applyGameAction,GameError,type GameState} from './after-hours';
-async function active(db:any,userId:string){if(!await db.prepare('SELECT id FROM users WHERE id=? AND deleted_at IS NULL').bind(userId).first())throw new GameError('Entre novamente para jogar.',401);}
-function present(row:any){const state:GameState=JSON.parse(row.state_json);const {receipts,...publicState}=state;return {state:publicState,revision:row.revision};}
-export async function readGame(db:any,userId:string){await active(db,userId);await db.prepare('INSERT INTO after_hours_states(user_id,state_json) VALUES (?,?) ON CONFLICT(user_id) DO NOTHING').bind(userId,JSON.stringify(initialGame())).run();const row=await db.prepare('SELECT state_json,revision FROM after_hours_states WHERE user_id=?').bind(userId).first();return present(row);}
-export async function mutateGame(db:any,userId:string,p:any,now=Date.now()){
- await active(db,userId);if(!p||!Number.isSafeInteger(p.revision)||p.revision<0||typeof p.clientId!=='string'||!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(p.clientId)||!p.command)throw new GameError('Ação inválida. Atualize o jogo e tente novamente.');
- const row=await db.prepare('SELECT state_json,revision FROM after_hours_states WHERE user_id=?').bind(userId).first();if(!row)throw new GameError('Abra o jogo antes de começar.',409);const old:GameState=JSON.parse(row.state_json);const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(p.command)));const signature=Array.from(new Uint8Array(digest),n=>n.toString(16).padStart(2,'0')).join('');const receipt=old.receipts.find(x=>x.id===p.clientId);if(receipt){if(receipt.signature!==signature)throw new GameError('Este envio já foi utilizado.',409);return {...present(row),replayed:true};}
- if(row.revision!==p.revision)throw new GameError('Seu jogo mudou em outra aba. Atualize para continuar.',409);
- if(old.receipts.filter(r=>r.at>now-60000).length>=60)throw new GameError('Muitas ações seguidas. Aguarde um instante.',429);
- const state=applyGameAction(old,p.command,now);state.receipts=[...old.receipts,{id:p.clientId,signature,at:now}].slice(-80);
- const result=await db.prepare(`UPDATE after_hours_states SET state_json=?,revision=revision+1,updated_at=CURRENT_TIMESTAMP WHERE user_id=? AND revision=? AND EXISTS (SELECT 1 FROM users WHERE id=? AND deleted_at IS NULL) RETURNING state_json,revision`).bind(JSON.stringify(state),userId,p.revision,userId).first();
- if(!result){const current=await db.prepare('SELECT state_json,revision FROM after_hours_states WHERE user_id=?').bind(userId).first();if(current){const s:GameState=JSON.parse(current.state_json);const duplicate=s.receipts.find(r=>r.id===p.clientId);if(duplicate&&duplicate.signature===signature)return {...present(current),replayed:true};}throw new GameError('Uma ação já foi processada em outra aba. Atualize o jogo.',409);}
- return {...present(result),replayed:false};
+import { initialGame, applyGameAction, GameError, type GameState } from "./after-hours";
+async function active(db: any, userId: string) {
+  if (
+    !(await db
+      .prepare("SELECT id FROM users WHERE id=? AND deleted_at IS NULL")
+      .bind(userId)
+      .first())
+  )
+    throw new GameError("Entre novamente para jogar.", 401);
+}
+function present(row: any) {
+  const state: GameState = JSON.parse(row.state_json);
+  const { receipts, ...publicState } = state;
+  return { state: publicState, revision: row.revision };
+}
+export async function readGame(db: any, userId: string) {
+  await active(db, userId);
+  await db
+    .prepare(
+      "INSERT INTO after_hours_states(user_id,state_json) VALUES (?,?) ON CONFLICT(user_id) DO NOTHING",
+    )
+    .bind(userId, JSON.stringify(initialGame()))
+    .run();
+  const row = await db
+    .prepare("SELECT state_json,revision FROM after_hours_states WHERE user_id=?")
+    .bind(userId)
+    .first();
+  return present(row);
+}
+export async function mutateGame(db: any, userId: string, p: any, now = Date.now()) {
+  await active(db, userId);
+  if (
+    !p ||
+    !Number.isSafeInteger(p.revision) ||
+    p.revision < 0 ||
+    typeof p.clientId !== "string" ||
+    !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(p.clientId) ||
+    !p.command
+  )
+    throw new GameError("Ação inválida. Atualize o jogo e tente novamente.");
+  const row = await db
+    .prepare("SELECT state_json,revision FROM after_hours_states WHERE user_id=?")
+    .bind(userId)
+    .first();
+  if (!row) throw new GameError("Abra o jogo antes de começar.", 409);
+  const old: GameState = JSON.parse(row.state_json);
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(JSON.stringify(p.command)),
+  );
+  const signature = Array.from(new Uint8Array(digest), (n) => n.toString(16).padStart(2, "0")).join(
+    "",
+  );
+  const receipt = old.receipts.find((x) => x.id === p.clientId);
+  if (receipt) {
+    if (receipt.signature !== signature) throw new GameError("Este envio já foi utilizado.", 409);
+    return { ...present(row), replayed: true };
+  }
+  if (row.revision !== p.revision)
+    throw new GameError("Seu jogo mudou em outra aba. Atualize para continuar.", 409);
+  if (old.receipts.filter((r) => r.at > now - 60000).length >= 60)
+    throw new GameError("Muitas ações seguidas. Aguarde um instante.", 429);
+  const state = applyGameAction(old, p.command, now);
+  state.receipts = [...old.receipts, { id: p.clientId, signature, at: now }].slice(-80);
+  const result = await db
+    .prepare(
+      `UPDATE after_hours_states SET state_json=?,revision=revision+1,updated_at=CURRENT_TIMESTAMP WHERE user_id=? AND revision=? AND EXISTS (SELECT 1 FROM users WHERE id=? AND deleted_at IS NULL) RETURNING state_json,revision`,
+    )
+    .bind(JSON.stringify(state), userId, p.revision, userId)
+    .first();
+  if (!result) {
+    const current = await db
+      .prepare("SELECT state_json,revision FROM after_hours_states WHERE user_id=?")
+      .bind(userId)
+      .first();
+    if (current) {
+      const s: GameState = JSON.parse(current.state_json);
+      const duplicate = s.receipts.find((r) => r.id === p.clientId);
+      if (duplicate && duplicate.signature === signature)
+        return { ...present(current), replayed: true };
+    }
+    throw new GameError("Uma ação já foi processada em outra aba. Atualize o jogo.", 409);
+  }
+  return { ...present(result), replayed: false };
 }

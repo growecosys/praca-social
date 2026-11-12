@@ -1,5 +1,74 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {DatabaseSync} from 'node:sqlite';import {readFile} from 'node:fs/promises';import {transformWithEsbuild} from 'vite';
-const {code}=await transformWithEsbuild(await readFile('lib/delete-account.ts','utf8'),'delete.ts',{loader:'ts',target:'esnext'});const {deleteAccount}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
-function setup(){const d=new DatabaseSync(':memory:');d.exec(`PRAGMA foreign_keys=ON;CREATE TABLE users(id TEXT PRIMARY KEY,username TEXT,display_name TEXT,bio TEXT,secret_hash TEXT,secret_salt TEXT,profile_complete INTEGER,answers_json TEXT,role_title TEXT,manifesto TEXT,avatar_json TEXT,avatar_image_key TEXT,deleted_at TEXT,updated_at TEXT);INSERT INTO users VALUES ('a','ana','Ana','bio','hash','salt',1,'["secret"]','Role','Manifesto','{}','image',NULL,NULL),('b','beto','Beto','','h','s',1,'[]','','','{}',NULL,NULL,NULL);CREATE TABLE profile_aliases(username TEXT UNIQUE,user_id TEXT REFERENCES users(id));CREATE TABLE sessions(user_id TEXT);INSERT INTO sessions VALUES ('a'),('b');CREATE TABLE email_auth_tokens(user_id TEXT,email TEXT);INSERT INTO email_auth_tokens VALUES ('a','ana@example.test');CREATE TABLE account_emails(user_id TEXT,email TEXT);INSERT INTO account_emails VALUES ('a','ana@example.test');CREATE TABLE pending_account_emails(user_id TEXT,email TEXT);CREATE TABLE account_recovery(user_id TEXT);INSERT INTO account_recovery VALUES ('a');CREATE TABLE role_generations(user_id TEXT);CREATE TABLE avatar_generations(user_id TEXT);CREATE TABLE assistant_usage(user_id TEXT);CREATE TABLE posts(id INTEGER,owner_id TEXT REFERENCES users(id),author TEXT,content TEXT);INSERT INTO posts VALUES (1,'a','Ana','public text');CREATE TABLE post_revisions(post_id INTEGER,author TEXT);INSERT INTO post_revisions VALUES (1,'Ana');CREATE TABLE comments(user_id TEXT,display_name TEXT,anonymous INTEGER,body TEXT);INSERT INTO comments VALUES ('a','Ana',0,'public comment');CREATE TABLE notifications(recipient_id TEXT,actor_id TEXT,title TEXT,body TEXT);INSERT INTO notifications VALUES ('b','a','Ana','private metadata'),('a','b','Beto','message');CREATE TABLE activity_events(user_id TEXT,action TEXT,entity_type TEXT,entity_id TEXT,metadata_json TEXT DEFAULT '{}');INSERT INTO activity_events(user_id,action,metadata_json) VALUES ('a','old','{"name":"Ana"}');CREATE TABLE pokes(sender_id TEXT,recipient_id TEXT,status TEXT,resolved_at TEXT);INSERT INTO pokes VALUES ('b','a','pending',NULL);`);const db={prepare(sql){const bind=args=>({sql,args,async first(){return d.prepare(sql).get(...args)||null;}});return {...bind([]),bind:(...args)=>bind(args)};},async batch(ss){d.exec('BEGIN');try{const out=ss.map(s=>d.prepare(s.sql).run(...s.args));d.exec('COMMIT');return out;}catch(e){d.exec('ROLLBACK');throw e;}}};return {d,db};}
-test('account deletion requires exact phrase, revokes access and anonymizes shared records without deleting them or affecting others',async()=>{const {d,db}=setup();await assert.rejects(deleteAccount(db,'a','deletar conta'));assert.equal(d.prepare("SELECT display_name FROM users WHERE id='a'").get().display_name,'Ana');await deleteAccount(db,'a','DELETAR CONTA');const user=d.prepare("SELECT * FROM users WHERE id='a'").get();assert.ok(user.deleted_at);assert.equal(user.display_name,'Conta excluída');assert.equal(user.secret_hash,'');assert.equal(user.answers_json,'[]');assert.equal(d.prepare("SELECT count(*) n FROM sessions WHERE user_id='a'").get().n,0);assert.equal(d.prepare("SELECT count(*) n FROM account_emails WHERE user_id='a'").get().n,0);assert.equal(d.prepare('SELECT content FROM posts').get().content,'public text');assert.equal(d.prepare('SELECT author FROM post_revisions').get().author,'Conta excluída');assert.equal(d.prepare("SELECT display_name FROM users WHERE id='b'").get().display_name,'Beto');assert.equal(d.prepare("SELECT count(*) n FROM sessions WHERE user_id='b'").get().n,1);await assert.rejects(deleteAccount(db,'a','DELETAR CONTA'));d.close();});
-test('failed deletion rolls back personal data, credentials, sessions and public attribution',async()=>{const {d,db}=setup();d.exec("CREATE TRIGGER fail BEFORE INSERT ON activity_events BEGIN SELECT RAISE(ABORT,'failed'); END");await assert.rejects(deleteAccount(db,'a','DELETAR CONTA'));assert.equal(d.prepare("SELECT deleted_at FROM users WHERE id='a'").get().deleted_at,null);assert.equal(d.prepare("SELECT count(*) n FROM sessions WHERE user_id='a'").get().n,1);assert.equal(d.prepare('SELECT author FROM posts').get().author,'Ana');assert.equal(d.prepare('SELECT count(*) n FROM account_emails').get().n,1);d.close();});
+import test from "node:test";
+import assert from "node:assert/strict";
+import { DatabaseSync } from "node:sqlite";
+import { readFile } from "node:fs/promises";
+import { transformWithEsbuild } from "vite";
+const { code } = await transformWithEsbuild(
+  await readFile("lib/delete-account.ts", "utf8"),
+  "delete.ts",
+  { loader: "ts", target: "esnext" },
+);
+const { deleteAccount } = await import(
+  "data:text/javascript;base64," + Buffer.from(code).toString("base64")
+);
+function setup() {
+  const d = new DatabaseSync(":memory:");
+  d.exec(
+    `PRAGMA foreign_keys=ON;CREATE TABLE users(id TEXT PRIMARY KEY,username TEXT,display_name TEXT,bio TEXT,secret_hash TEXT,secret_salt TEXT,profile_complete INTEGER,answers_json TEXT,role_title TEXT,manifesto TEXT,avatar_json TEXT,avatar_image_key TEXT,deleted_at TEXT,updated_at TEXT);INSERT INTO users VALUES ('a','ana','Ana','bio','hash','salt',1,'["secret"]','Role','Manifesto','{}','image',NULL,NULL),('b','beto','Beto','','h','s',1,'[]','','','{}',NULL,NULL,NULL);CREATE TABLE profile_aliases(username TEXT UNIQUE,user_id TEXT REFERENCES users(id));CREATE TABLE sessions(user_id TEXT);INSERT INTO sessions VALUES ('a'),('b');CREATE TABLE email_auth_tokens(user_id TEXT,email TEXT);INSERT INTO email_auth_tokens VALUES ('a','ana@example.test');CREATE TABLE account_emails(user_id TEXT,email TEXT);INSERT INTO account_emails VALUES ('a','ana@example.test');CREATE TABLE pending_account_emails(user_id TEXT,email TEXT);CREATE TABLE account_recovery(user_id TEXT);INSERT INTO account_recovery VALUES ('a');CREATE TABLE role_generations(user_id TEXT);CREATE TABLE avatar_generations(user_id TEXT);CREATE TABLE assistant_usage(user_id TEXT);CREATE TABLE posts(id INTEGER,owner_id TEXT REFERENCES users(id),author TEXT,content TEXT);INSERT INTO posts VALUES (1,'a','Ana','public text');CREATE TABLE post_revisions(post_id INTEGER,author TEXT);INSERT INTO post_revisions VALUES (1,'Ana');CREATE TABLE comments(user_id TEXT,display_name TEXT,anonymous INTEGER,body TEXT);INSERT INTO comments VALUES ('a','Ana',0,'public comment');CREATE TABLE notifications(recipient_id TEXT,actor_id TEXT,title TEXT,body TEXT);INSERT INTO notifications VALUES ('b','a','Ana','private metadata'),('a','b','Beto','message');CREATE TABLE activity_events(user_id TEXT,action TEXT,entity_type TEXT,entity_id TEXT,metadata_json TEXT DEFAULT '{}');INSERT INTO activity_events(user_id,action,metadata_json) VALUES ('a','old','{"name":"Ana"}');CREATE TABLE pokes(sender_id TEXT,recipient_id TEXT,status TEXT,resolved_at TEXT);INSERT INTO pokes VALUES ('b','a','pending',NULL);`,
+  );
+  const db = {
+    prepare(sql) {
+      const bind = (args) => ({
+        sql,
+        args,
+        async first() {
+          return d.prepare(sql).get(...args) || null;
+        },
+      });
+      return { ...bind([]), bind: (...args) => bind(args) };
+    },
+    async batch(ss) {
+      d.exec("BEGIN");
+      try {
+        const out = ss.map((s) => d.prepare(s.sql).run(...s.args));
+        d.exec("COMMIT");
+        return out;
+      } catch (e) {
+        d.exec("ROLLBACK");
+        throw e;
+      }
+    },
+  };
+  return { d, db };
+}
+test("account deletion requires exact phrase, revokes access and anonymizes shared records without deleting them or affecting others", async () => {
+  const { d, db } = setup();
+  await assert.rejects(deleteAccount(db, "a", "deletar conta"));
+  assert.equal(d.prepare("SELECT display_name FROM users WHERE id='a'").get().display_name, "Ana");
+  await deleteAccount(db, "a", "DELETAR CONTA");
+  const user = d.prepare("SELECT * FROM users WHERE id='a'").get();
+  assert.ok(user.deleted_at);
+  assert.equal(user.display_name, "Conta excluída");
+  assert.equal(user.secret_hash, "");
+  assert.equal(user.answers_json, "[]");
+  assert.equal(d.prepare("SELECT count(*) n FROM sessions WHERE user_id='a'").get().n, 0);
+  assert.equal(d.prepare("SELECT count(*) n FROM account_emails WHERE user_id='a'").get().n, 0);
+  assert.equal(d.prepare("SELECT content FROM posts").get().content, "public text");
+  assert.equal(d.prepare("SELECT author FROM post_revisions").get().author, "Conta excluída");
+  assert.equal(d.prepare("SELECT display_name FROM users WHERE id='b'").get().display_name, "Beto");
+  assert.equal(d.prepare("SELECT count(*) n FROM sessions WHERE user_id='b'").get().n, 1);
+  await assert.rejects(deleteAccount(db, "a", "DELETAR CONTA"));
+  d.close();
+});
+test("failed deletion rolls back personal data, credentials, sessions and public attribution", async () => {
+  const { d, db } = setup();
+  d.exec(
+    "CREATE TRIGGER fail BEFORE INSERT ON activity_events BEGIN SELECT RAISE(ABORT,'failed'); END",
+  );
+  await assert.rejects(deleteAccount(db, "a", "DELETAR CONTA"));
+  assert.equal(d.prepare("SELECT deleted_at FROM users WHERE id='a'").get().deleted_at, null);
+  assert.equal(d.prepare("SELECT count(*) n FROM sessions WHERE user_id='a'").get().n, 1);
+  assert.equal(d.prepare("SELECT author FROM posts").get().author, "Ana");
+  assert.equal(d.prepare("SELECT count(*) n FROM account_emails").get().n, 1);
+  d.close();
+});

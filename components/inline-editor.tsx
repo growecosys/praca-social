@@ -1,23 +1,317 @@
-'use client';
-import {useEffect,useRef,useState} from 'react';
-import InlineText from './inline-text';
-import {inlineHref} from '../lib/inline-text';
-type Person={username:string;displayName:string;avatarUrl:string};
-export default function InlineEditor({value,onChange,rows,placeholder,className,label}:{value:string;onChange:(text:string,checkpoint?:boolean)=>void;rows:number;placeholder:string;className:string;label:string}){
- const input=useRef<HTMLTextAreaElement>(null),selection=useRef({start:0,end:0});
- const [query,setQuery]=useState<string|null>(null),[people,setPeople]=useState<Person[]>([]),[active,setActive]=useState(0),[loading,setLoading]=useState(false),[searchError,setSearchError]=useState(false),[preview,setPreview]=useState(false),[linkOpen,setLinkOpen]=useState(false),[url,setUrl]=useState(''),[linkLabel,setLinkLabel]=useState(''),[error,setError]=useState('');
- const listId='mentions-'+label.replace(/[^a-z0-9]/gi,'');
- useEffect(()=>{if(query===null){setPeople([]);return;}const controller=new AbortController();setLoading(true);setSearchError(false);setPeople([]);const timer=setTimeout(()=>{fetch('/api/users/search?q='+encodeURIComponent(query),{signal:controller.signal,cache:'no-store'}).then(async r=>{if(!r.ok)throw Error();return r.json();}).then(d=>{setPeople(d.people||[]);setActive(0);setLoading(false);}).catch(()=>{if(!controller.signal.aborted){setLoading(false);setSearchError(true);}});},180);return()=>{clearTimeout(timer);controller.abort();};},[query]);
- function capture(){const el=input.current;if(el)selection.current={start:el.selectionStart,end:el.selectionEnd};}
- function detect(text:string,end:number){const match=text.slice(0,end).match(/(?:^|[\s(])@([a-z0-9_-]{0,24})$/i);setQuery(match?match[1]:null);}
- function replace(text:string,start=selection.current.start,end=selection.current.end){const next=value.slice(0,start)+text+value.slice(end);onChange(next,true);const pos=start+text.length;selection.current={start:pos,end:pos};requestAnimationFrame(()=>{input.current?.focus();input.current?.setSelectionRange(pos,pos);});setQuery(null);}
- function format(marker:string){const {start,end}=selection.current;replace(marker+(value.slice(start,end)||'texto')+marker);}
- function openLink(){capture();setLinkLabel(value.slice(selection.current.start,selection.current.end));setUrl('');setError('');setLinkOpen(true);setQuery(null);}
- function mention(p:Person){const end=selection.current.end;const start=end-(query?.length||0)-1;replace(`[@${p.username}](/u/${p.username}) `,Math.max(0,start),end);}
- const button='min-h-11 min-w-11 border border-[#d8d0c1] px-3 py-2 text-sm hover:bg-[#e6dfd2] focus-visible:outline-2 focus-visible:outline-[#244e35]';
- return <div className="relative"><div role="toolbar" aria-label="Formatar trecho" className="mb-3 flex flex-wrap gap-1" onMouseDown={e=>e.preventDefault()}><button type="button" onClick={()=>format('**')} aria-label="Negrito" title="Negrito · Ctrl+B" className={button}><strong>B</strong></button><button type="button" onClick={()=>format('_')} aria-label="Itálico" title="Itálico · Ctrl+I" className={button}><em>I</em></button><button type="button" onClick={()=>format('~~')} aria-label="Riscado" className={button}><s>S</s></button><button type="button" onClick={openLink} className={button} title="Adicionar link · Ctrl+K">Link</button><button type="button" onClick={()=>{const start=selection.current.start;replace('@');setQuery('');selection.current={start:start+1,end:start+1};}} className={button}>@ Mencionar</button><button type="button" onClick={()=>setPreview(v=>!v)} aria-pressed={preview} className={button}>{preview?'Ocultar prévia':'Ver prévia'}</button></div>
- {linkOpen&&<form onSubmit={e=>{e.preventDefault();const href=inlineHref(url.trim());if(!href||!linkLabel.trim()){setError('Escreva o texto do link e um endereço http:// ou https:// válido.');return;}replace(`[${linkLabel.replace(/[\[\]\n]/g,' ').trim()}](${href.replace(/\(/g,'%28').replace(/\)/g,'%29')})`);setLinkOpen(false);}} className="mb-4 space-y-3 border border-[#bdb5a7] bg-[#f5f1e8] p-4" aria-label="Adicionar link"><label className="block text-sm">Texto do link<input value={linkLabel} onChange={e=>setLinkLabel(e.target.value)} autoFocus required maxLength={500} className="mt-1 block w-full border bg-white p-3"/></label><label className="block text-sm">Endereço<input value={url} onChange={e=>setUrl(e.target.value)} type="url" required maxLength={2048} placeholder="https://…" className="mt-1 block w-full border bg-white p-3"/></label>{error&&<p role="alert" className="text-sm text-red-800">{error}</p>}<div className="flex gap-2"><button className={button}>Adicionar link</button><button type="button" onClick={()=>{setLinkOpen(false);input.current?.focus();}} className={button}>Cancelar</button></div></form>}
- <textarea ref={input} value={value} aria-label={label} rows={rows} placeholder={placeholder} className={className} aria-autocomplete="list" aria-controls={query!==null?listId:undefined} aria-expanded={query!==null} aria-activedescendant={query!==null&&people[active]?listId+'-'+active:undefined} onSelect={capture} onClick={()=>{capture();detect(value,selection.current.end);}} onChange={e=>{capture();onChange(e.target.value);detect(e.target.value,e.target.selectionStart);}} onKeyDown={e=>{if((e.ctrlKey||e.metaKey)&&['b','i','k'].includes(e.key.toLowerCase())){e.preventDefault();capture();if(e.key.toLowerCase()==='k')openLink();else format(e.key.toLowerCase()==='b'?'**':'_');return;}if(query!==null){if(e.key==='Escape'){e.preventDefault();setQuery(null);}else if(e.key==='ArrowDown'&&people.length){e.preventDefault();setActive((active+1)%people.length);}else if(e.key==='ArrowUp'&&people.length){e.preventDefault();setActive((active+people.length-1)%people.length);}else if(e.key==='Enter'&&people[active]){e.preventDefault();mention(people[active]);}}}}/>
- {query!==null&&<div className="relative z-20 mt-2 max-h-72 overflow-y-auto border border-[#bdb5a7] bg-[#fbf8f1] p-2 shadow-lg"><p className="px-2 py-1 text-xs text-[#667064]" role="status">{loading?'Buscando pessoas…':searchError?'Não foi possível buscar. Tente digitar novamente.':people.length?'Escolha quem mencionar. A pessoa será avisada ao publicar.':'Nenhuma pessoa encontrada.'}</p><ul id={listId} role="listbox" aria-label="Pessoas para mencionar">{people.map((p,i)=><li key={p.username} role="option" aria-selected={active===i} id={listId+'-'+i}><button type="button" onMouseDown={e=>e.preventDefault()} onClick={()=>mention(p)} className={`flex min-h-12 w-full items-center gap-3 px-3 py-2 text-left ${i===active?'bg-[#e6dfd2]':''}`}><img src={p.avatarUrl} alt="" className="size-8 rounded-full object-cover"/><span className="min-w-0"><span className="block truncate text-sm font-semibold">{p.displayName}</span><span className="text-xs text-[#667064]">@{p.username}</span></span></button></li>)}</ul><button type="button" onClick={()=>setQuery(null)} className="min-h-11 px-3 text-sm underline">Fechar sugestões</button></div>}
- <p className="mt-2 text-xs text-[#667064]">Selecione um trecho para formatar. Digite @ para mencionar alguém.</p>{preview&&<div className="mt-4 border-t border-[#d8d0c1] py-4"><p className="mb-2 font-sans text-xs text-[#667064]">Prévia deste bloco</p><div className="whitespace-pre-wrap break-words font-serif text-xl leading-relaxed"><InlineText text={value}/></div></div>}</div>;
+"use client";
+import { useEffect, useRef, useState } from "react";
+import InlineText from "./inline-text";
+import { inlineHref } from "../lib/inline-text";
+type Person = { username: string; displayName: string; avatarUrl: string };
+export default function InlineEditor({
+  value,
+  onChange,
+  rows,
+  placeholder,
+  className,
+  label,
+}: {
+  value: string;
+  onChange: (text: string, checkpoint?: boolean) => void;
+  rows: number;
+  placeholder: string;
+  className: string;
+  label: string;
+}) {
+  const input = useRef<HTMLTextAreaElement>(null),
+    selection = useRef({ start: 0, end: 0 });
+  const [query, setQuery] = useState<string | null>(null),
+    [people, setPeople] = useState<Person[]>([]),
+    [active, setActive] = useState(0),
+    [loading, setLoading] = useState(false),
+    [searchError, setSearchError] = useState(false),
+    [preview, setPreview] = useState(false),
+    [linkOpen, setLinkOpen] = useState(false),
+    [url, setUrl] = useState(""),
+    [linkLabel, setLinkLabel] = useState(""),
+    [error, setError] = useState("");
+  const listId = "mentions-" + label.replace(/[^a-z0-9]/gi, "");
+  useEffect(() => {
+    if (query === null) {
+      setPeople([]);
+      return;
+    }
+    const controller = new AbortController();
+    setLoading(true);
+    setSearchError(false);
+    setPeople([]);
+    const timer = setTimeout(() => {
+      fetch("/api/users/search?q=" + encodeURIComponent(query), {
+        signal: controller.signal,
+        cache: "no-store",
+      })
+        .then(async (r) => {
+          if (!r.ok) throw Error();
+          return r.json();
+        })
+        .then((d) => {
+          setPeople(d.people || []);
+          setActive(0);
+          setLoading(false);
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) {
+            setLoading(false);
+            setSearchError(true);
+          }
+        });
+    }, 180);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [query]);
+  function capture() {
+    const el = input.current;
+    if (el) selection.current = { start: el.selectionStart, end: el.selectionEnd };
+  }
+  function detect(text: string, end: number) {
+    const match = text.slice(0, end).match(/(?:^|[\s(])@([a-z0-9_-]{0,24})$/i);
+    setQuery(match ? match[1] : null);
+  }
+  function replace(text: string, start = selection.current.start, end = selection.current.end) {
+    const next = value.slice(0, start) + text + value.slice(end);
+    onChange(next, true);
+    const pos = start + text.length;
+    selection.current = { start: pos, end: pos };
+    requestAnimationFrame(() => {
+      input.current?.focus();
+      input.current?.setSelectionRange(pos, pos);
+    });
+    setQuery(null);
+  }
+  function format(marker: string) {
+    const { start, end } = selection.current;
+    replace(marker + (value.slice(start, end) || "texto") + marker);
+  }
+  function openLink() {
+    capture();
+    setLinkLabel(value.slice(selection.current.start, selection.current.end));
+    setUrl("");
+    setError("");
+    setLinkOpen(true);
+    setQuery(null);
+  }
+  function mention(p: Person) {
+    const end = selection.current.end;
+    const start = end - (query?.length || 0) - 1;
+    replace(`[@${p.username}](/u/${p.username}) `, Math.max(0, start), end);
+  }
+  const button =
+    "min-h-11 min-w-11 border border-[#d8d0c1] px-3 py-2 text-sm hover:bg-[#e6dfd2] focus-visible:outline-2 focus-visible:outline-[#244e35]";
+  return (
+    <div className="relative">
+      <div
+        role="toolbar"
+        aria-label="Formatar trecho"
+        className="mb-3 flex flex-wrap gap-1"
+        onMouseDown={(e) => e.preventDefault()}
+      >
+        <button
+          type="button"
+          onClick={() => format("**")}
+          aria-label="Negrito"
+          title="Negrito · Ctrl+B"
+          className={button}
+        >
+          <strong>B</strong>
+        </button>
+        <button
+          type="button"
+          onClick={() => format("_")}
+          aria-label="Itálico"
+          title="Itálico · Ctrl+I"
+          className={button}
+        >
+          <em>I</em>
+        </button>
+        <button type="button" onClick={() => format("~~")} aria-label="Riscado" className={button}>
+          <s>S</s>
+        </button>
+        <button type="button" onClick={openLink} className={button} title="Adicionar link · Ctrl+K">
+          Link
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            const start = selection.current.start;
+            replace("@");
+            setQuery("");
+            selection.current = { start: start + 1, end: start + 1 };
+          }}
+          className={button}
+        >
+          @ Mencionar
+        </button>
+        <button
+          type="button"
+          onClick={() => setPreview((v) => !v)}
+          aria-pressed={preview}
+          className={button}
+        >
+          {preview ? "Ocultar prévia" : "Ver prévia"}
+        </button>
+      </div>
+      {linkOpen && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const href = inlineHref(url.trim());
+            if (!href || !linkLabel.trim()) {
+              setError("Escreva o texto do link e um endereço http:// ou https:// válido.");
+              return;
+            }
+            replace(
+              `[${linkLabel.replace(/[\[\]\n]/g, " ").trim()}](${href.replace(/\(/g, "%28").replace(/\)/g, "%29")})`,
+            );
+            setLinkOpen(false);
+          }}
+          className="mb-4 space-y-3 border border-[#bdb5a7] bg-[#f5f1e8] p-4"
+          aria-label="Adicionar link"
+        >
+          <label className="block text-sm">
+            Texto do link
+            <input
+              value={linkLabel}
+              onChange={(e) => setLinkLabel(e.target.value)}
+              autoFocus
+              required
+              maxLength={500}
+              className="mt-1 block w-full border bg-white p-3"
+            />
+          </label>
+          <label className="block text-sm">
+            Endereço
+            <input
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              type="url"
+              required
+              maxLength={2048}
+              placeholder="https://…"
+              className="mt-1 block w-full border bg-white p-3"
+            />
+          </label>
+          {error && (
+            <p role="alert" className="text-sm text-red-800">
+              {error}
+            </p>
+          )}
+          <div className="flex gap-2">
+            <button className={button}>Adicionar link</button>
+            <button
+              type="button"
+              onClick={() => {
+                setLinkOpen(false);
+                input.current?.focus();
+              }}
+              className={button}
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
+      )}
+      <textarea
+        ref={input}
+        value={value}
+        aria-label={label}
+        rows={rows}
+        placeholder={placeholder}
+        className={className}
+        aria-autocomplete="list"
+        aria-controls={query !== null ? listId : undefined}
+        aria-expanded={query !== null}
+        aria-activedescendant={query !== null && people[active] ? listId + "-" + active : undefined}
+        onSelect={capture}
+        onClick={() => {
+          capture();
+          detect(value, selection.current.end);
+        }}
+        onChange={(e) => {
+          capture();
+          onChange(e.target.value);
+          detect(e.target.value, e.target.selectionStart);
+        }}
+        onKeyDown={(e) => {
+          if ((e.ctrlKey || e.metaKey) && ["b", "i", "k"].includes(e.key.toLowerCase())) {
+            e.preventDefault();
+            capture();
+            if (e.key.toLowerCase() === "k") openLink();
+            else format(e.key.toLowerCase() === "b" ? "**" : "_");
+            return;
+          }
+          if (query !== null) {
+            if (e.key === "Escape") {
+              e.preventDefault();
+              setQuery(null);
+            } else if (e.key === "ArrowDown" && people.length) {
+              e.preventDefault();
+              setActive((active + 1) % people.length);
+            } else if (e.key === "ArrowUp" && people.length) {
+              e.preventDefault();
+              setActive((active + people.length - 1) % people.length);
+            } else if (e.key === "Enter" && people[active]) {
+              e.preventDefault();
+              mention(people[active]);
+            }
+          }
+        }}
+      />
+      {query !== null && (
+        <div className="relative z-20 mt-2 max-h-72 overflow-y-auto border border-[#bdb5a7] bg-[#fbf8f1] p-2 shadow-lg">
+          <p className="px-2 py-1 text-xs text-[#667064]" role="status">
+            {loading
+              ? "Buscando pessoas…"
+              : searchError
+                ? "Não foi possível buscar. Tente digitar novamente."
+                : people.length
+                  ? "Escolha quem mencionar. A pessoa será avisada ao publicar."
+                  : "Nenhuma pessoa encontrada."}
+          </p>
+          <ul id={listId} role="listbox" aria-label="Pessoas para mencionar">
+            {people.map((p, i) => (
+              <li key={p.username} role="option" aria-selected={active === i} id={listId + "-" + i}>
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => mention(p)}
+                  className={`flex min-h-12 w-full items-center gap-3 px-3 py-2 text-left ${i === active ? "bg-[#e6dfd2]" : ""}`}
+                >
+                  <img src={p.avatarUrl} alt="" className="size-8 rounded-full object-cover" />
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold">{p.displayName}</span>
+                    <span className="text-xs text-[#667064]">@{p.username}</span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            onClick={() => setQuery(null)}
+            className="min-h-11 px-3 text-sm underline"
+          >
+            Fechar sugestões
+          </button>
+        </div>
+      )}
+      <p className="mt-2 text-xs text-[#667064]">
+        Selecione um trecho para formatar. Digite @ para mencionar alguém.
+      </p>
+      {preview && (
+        <div className="mt-4 border-t border-[#d8d0c1] py-4">
+          <p className="mb-2 font-sans text-xs text-[#667064]">Prévia deste bloco</p>
+          <div className="whitespace-pre-wrap break-words font-serif text-xl leading-relaxed">
+            <InlineText text={value} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }

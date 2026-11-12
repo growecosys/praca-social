@@ -1,20 +1,213 @@
-'use client';
-import {useEffect,useRef,useState,type ReactNode} from 'react';
-import {ArrowUp,ArrowDown,GripVertical,Trash2} from 'lucide-react';
-import type {ContentBlock} from '../lib/content';
-import {reorderBlock,blockDropIndex} from '../lib/block-order';
-export default function BlockList({blocks,onReorder,onRemove,renderBlock}:{blocks:ContentBlock[];onReorder:(next:ContentBlock[])=>void;onRemove:(id:string)=>void;renderBlock:(block:ContentBlock,index:number)=>ReactNode}){
- const root=useRef<HTMLDivElement>(null),drag=useRef<{id:string;pointer:number;startY:number;y:number;active:boolean;destination:number;handle:HTMLButtonElement}|null>(null),frame=useRef<number|null>(null);
- const [moving,setMoving]=useState<string|null>(null),[marker,setMarker]=useState<string|null>(null),[announcement,setAnnouncement]=useState('');
- function cancel(){if(frame.current!==null)cancelAnimationFrame(frame.current);frame.current=null;drag.current=null;setMoving(null);setMarker(null);}
- useEffect(()=>()=>{if(frame.current!==null)cancelAnimationFrame(frame.current);},[]);
- function move(id:string,to:number){const next=reorderBlock(blocks,id,to);if(next!==blocks){onReorder(next);setAnnouncement(`Bloco movido para a posição ${next.findIndex(b=>b.id===id)+1} de ${next.length}.`);}}
- function locate(){const d=drag.current;if(!d?.active)return;const elements=Array.from(root.current?.querySelectorAll<HTMLElement>('[data-order-block]')||[]).filter(el=>el.dataset.orderBlock!==d.id);d.destination=blockDropIndex(elements.map(el=>el.getBoundingClientRect()),d.y);setMarker(elements[d.destination]?.dataset.orderBlock||'end');}
- function scroll(){const d=drag.current;if(!d?.active)return;const edge=75,h=window.innerHeight;const amount=d.y<edge?-Math.min(16,(edge-d.y)/4):d.y>h-edge?Math.min(16,(d.y-h+edge)/4):0;if(amount){window.scrollBy(0,amount);locate();}frame.current=requestAnimationFrame(scroll);}
- const control='inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-sm border border-[#d8d0c1] px-2 text-sm hover:bg-[#e6dfd2] disabled:opacity-30 focus-visible:outline-2 focus-visible:outline-[#244e35]';
- return <div ref={root} className="mt-8"><p className="mb-4 text-xs text-[#667064]">Arraste pela alça para mudar a ordem ou use as setas. Apagou sem querer? Use Desfazer.</p><p role="status" aria-live="polite" className="sr-only">{announcement}</p><div className="space-y-6">{blocks.map((b,i)=><div key={b.id} data-order-block={b.id} className={`relative rounded-sm ${moving===b.id?'opacity-50 ring-1 ring-[#244e35]':''}`}>
- {marker===b.id&&<div aria-hidden="true" className="absolute -top-3 left-0 right-0 h-1 bg-[#244e35]"/>}
- <div className="mb-2 flex flex-wrap items-center justify-between gap-2"><button type="button" className={`${control} touch-none cursor-grab active:cursor-grabbing`} data-block-handle={b.id} aria-label={`Arrastar bloco ${i+1}. Use as setas do teclado para mover.`} aria-describedby="block-order-help" onKeyDown={e=>{if(e.key==='ArrowUp'||e.key==='ArrowDown'){e.preventDefault();move(b.id,i+(e.key==='ArrowUp'?-1:1));}if(e.key==='Escape')cancel();}} onPointerDown={e=>{if(!e.isPrimary||e.button!==0)return;e.currentTarget.focus();e.currentTarget.setPointerCapture(e.pointerId);drag.current={id:b.id,pointer:e.pointerId,startY:e.clientY,y:e.clientY,active:false,destination:i,handle:e.currentTarget};}} onPointerMove={e=>{const d=drag.current;if(!d||d.pointer!==e.pointerId)return;d.y=e.clientY;if(!d.active&&Math.abs(d.y-d.startY)>6){d.active=true;setMoving(d.id);setAnnouncement('Movendo bloco. Solte na posição desejada.');frame.current=requestAnimationFrame(scroll);}if(d.active){e.preventDefault();locate();}}} onPointerUp={e=>{const d=drag.current;if(!d||d.pointer!==e.pointerId)return;if(d.active)move(d.id,d.destination);cancel();if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);}} onPointerCancel={cancel} onLostPointerCapture={()=>{if(drag.current)cancel();}}><GripVertical size={18}/><span>Arrastar</span></button>
- <div className="flex gap-1"><button type="button" disabled={i===0||Boolean(moving)} onClick={()=>move(b.id,i-1)} aria-label={`Subir bloco ${i+1}`} title="Subir bloco" className={control}><ArrowUp size={16}/></button><button type="button" disabled={i===blocks.length-1||Boolean(moving)} onClick={()=>move(b.id,i+1)} aria-label={`Descer bloco ${i+1}`} title="Descer bloco" className={control}><ArrowDown size={16}/></button><button type="button" disabled={Boolean(moving)} onClick={()=>{onRemove(b.id);setAnnouncement('Bloco apagado. Use Desfazer para recuperar.');requestAnimationFrame(()=>{const handles=root.current?.querySelectorAll<HTMLButtonElement>('[data-block-handle]');if(handles?.length)handles[Math.min(i,handles.length-1)].focus();});}} className={`${control} text-[#8a3329]`} aria-label={`Apagar bloco ${i+1}`}><Trash2 size={16}/><span>Apagar</span></button></div></div>
- {renderBlock(b,i)}</div>)}{marker==='end'&&<div aria-hidden="true" className="h-1 bg-[#244e35]"/>}</div><span id="block-order-help" className="sr-only">Na alça, use seta para cima ou para baixo para mudar a posição. Durante o arraste, pressione Escape para cancelar.</span></div>;
+"use client";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { ArrowUp, ArrowDown, GripVertical, Trash2 } from "lucide-react";
+import type { ContentBlock } from "../lib/content";
+import { reorderBlock, blockDropIndex } from "../lib/block-order";
+export default function BlockList({
+  blocks,
+  onReorder,
+  onRemove,
+  renderBlock,
+}: {
+  blocks: ContentBlock[];
+  onReorder: (next: ContentBlock[]) => void;
+  onRemove: (id: string) => void;
+  renderBlock: (block: ContentBlock, index: number) => ReactNode;
+}) {
+  const root = useRef<HTMLDivElement>(null),
+    drag = useRef<{
+      id: string;
+      pointer: number;
+      startY: number;
+      y: number;
+      active: boolean;
+      destination: number;
+      handle: HTMLButtonElement;
+    } | null>(null),
+    frame = useRef<number | null>(null);
+  const [moving, setMoving] = useState<string | null>(null),
+    [marker, setMarker] = useState<string | null>(null),
+    [announcement, setAnnouncement] = useState("");
+  function cancel() {
+    if (frame.current !== null) cancelAnimationFrame(frame.current);
+    frame.current = null;
+    drag.current = null;
+    setMoving(null);
+    setMarker(null);
+  }
+  useEffect(
+    () => () => {
+      if (frame.current !== null) cancelAnimationFrame(frame.current);
+    },
+    [],
+  );
+  function move(id: string, to: number) {
+    const next = reorderBlock(blocks, id, to);
+    if (next !== blocks) {
+      onReorder(next);
+      setAnnouncement(
+        `Bloco movido para a posição ${next.findIndex((b) => b.id === id) + 1} de ${next.length}.`,
+      );
+    }
+  }
+  function locate() {
+    const d = drag.current;
+    if (!d?.active) return;
+    const elements = Array.from(
+      root.current?.querySelectorAll<HTMLElement>("[data-order-block]") || [],
+    ).filter((el) => el.dataset.orderBlock !== d.id);
+    d.destination = blockDropIndex(
+      elements.map((el) => el.getBoundingClientRect()),
+      d.y,
+    );
+    setMarker(elements[d.destination]?.dataset.orderBlock || "end");
+  }
+  function scroll() {
+    const d = drag.current;
+    if (!d?.active) return;
+    const edge = 75,
+      h = window.innerHeight;
+    const amount =
+      d.y < edge
+        ? -Math.min(16, (edge - d.y) / 4)
+        : d.y > h - edge
+          ? Math.min(16, (d.y - h + edge) / 4)
+          : 0;
+    if (amount) {
+      window.scrollBy(0, amount);
+      locate();
+    }
+    frame.current = requestAnimationFrame(scroll);
+  }
+  const control =
+    "inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-sm border border-[#d8d0c1] px-2 text-sm hover:bg-[#e6dfd2] disabled:opacity-30 focus-visible:outline-2 focus-visible:outline-[#244e35]";
+  return (
+    <div ref={root} className="mt-8">
+      <p className="mb-4 text-xs text-[#667064]">
+        Arraste pela alça para mudar a ordem ou use as setas. Apagou sem querer? Use Desfazer.
+      </p>
+      <p role="status" aria-live="polite" className="sr-only">
+        {announcement}
+      </p>
+      <div className="space-y-6">
+        {blocks.map((b, i) => (
+          <div
+            key={b.id}
+            data-order-block={b.id}
+            className={`relative rounded-sm ${moving === b.id ? "opacity-50 ring-1 ring-[#244e35]" : ""}`}
+          >
+            {marker === b.id && (
+              <div aria-hidden="true" className="absolute -top-3 left-0 right-0 h-1 bg-[#244e35]" />
+            )}
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <button
+                type="button"
+                className={`${control} touch-none cursor-grab active:cursor-grabbing`}
+                data-block-handle={b.id}
+                aria-label={`Arrastar bloco ${i + 1}. Use as setas do teclado para mover.`}
+                aria-describedby="block-order-help"
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+                    e.preventDefault();
+                    move(b.id, i + (e.key === "ArrowUp" ? -1 : 1));
+                  }
+                  if (e.key === "Escape") cancel();
+                }}
+                onPointerDown={(e) => {
+                  if (!e.isPrimary || e.button !== 0) return;
+                  e.currentTarget.focus();
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                  drag.current = {
+                    id: b.id,
+                    pointer: e.pointerId,
+                    startY: e.clientY,
+                    y: e.clientY,
+                    active: false,
+                    destination: i,
+                    handle: e.currentTarget,
+                  };
+                }}
+                onPointerMove={(e) => {
+                  const d = drag.current;
+                  if (!d || d.pointer !== e.pointerId) return;
+                  d.y = e.clientY;
+                  if (!d.active && Math.abs(d.y - d.startY) > 6) {
+                    d.active = true;
+                    setMoving(d.id);
+                    setAnnouncement("Movendo bloco. Solte na posição desejada.");
+                    frame.current = requestAnimationFrame(scroll);
+                  }
+                  if (d.active) {
+                    e.preventDefault();
+                    locate();
+                  }
+                }}
+                onPointerUp={(e) => {
+                  const d = drag.current;
+                  if (!d || d.pointer !== e.pointerId) return;
+                  if (d.active) move(d.id, d.destination);
+                  cancel();
+                  if (e.currentTarget.hasPointerCapture(e.pointerId))
+                    e.currentTarget.releasePointerCapture(e.pointerId);
+                }}
+                onPointerCancel={cancel}
+                onLostPointerCapture={() => {
+                  if (drag.current) cancel();
+                }}
+              >
+                <GripVertical size={18} />
+                <span>Arrastar</span>
+              </button>
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  disabled={i === 0 || Boolean(moving)}
+                  onClick={() => move(b.id, i - 1)}
+                  aria-label={`Subir bloco ${i + 1}`}
+                  title="Subir bloco"
+                  className={control}
+                >
+                  <ArrowUp size={16} />
+                </button>
+                <button
+                  type="button"
+                  disabled={i === blocks.length - 1 || Boolean(moving)}
+                  onClick={() => move(b.id, i + 1)}
+                  aria-label={`Descer bloco ${i + 1}`}
+                  title="Descer bloco"
+                  className={control}
+                >
+                  <ArrowDown size={16} />
+                </button>
+                <button
+                  type="button"
+                  disabled={Boolean(moving)}
+                  onClick={() => {
+                    onRemove(b.id);
+                    setAnnouncement("Bloco apagado. Use Desfazer para recuperar.");
+                    requestAnimationFrame(() => {
+                      const handles =
+                        root.current?.querySelectorAll<HTMLButtonElement>("[data-block-handle]");
+                      if (handles?.length) handles[Math.min(i, handles.length - 1)].focus();
+                    });
+                  }}
+                  className={`${control} text-[#8a3329]`}
+                  aria-label={`Apagar bloco ${i + 1}`}
+                >
+                  <Trash2 size={16} />
+                  <span>Apagar</span>
+                </button>
+              </div>
+            </div>
+            {renderBlock(b, i)}
+          </div>
+        ))}
+        {marker === "end" && <div aria-hidden="true" className="h-1 bg-[#244e35]" />}
+      </div>
+      <span id="block-order-help" className="sr-only">
+        Na alça, use seta para cima ou para baixo para mudar a posição. Durante o arraste, pressione
+        Escape para cancelar.
+      </span>
+    </div>
+  );
 }

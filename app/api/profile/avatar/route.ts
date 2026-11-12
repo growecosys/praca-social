@@ -1,11 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 import { env } from "cloudflare:workers";
 import { getDb } from "../../../../db";
-import {
-  activityEvents,
-  avatarGenerations,
-  users,
-} from "../../../../db/schema";
+import { activityEvents, avatarGenerations, users } from "../../../../db/schema";
 import { requirePracaUser } from "../../../../lib/praca-auth";
 
 const MODEL = "gpt-image-2";
@@ -16,8 +12,7 @@ const RULES =
 function decodeBase64(value: string) {
   const binary = atob(value);
   const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index++)
-    bytes[index] = binary.charCodeAt(index);
+  for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
   return bytes;
 }
 function details(user: any, direction = "") {
@@ -33,8 +28,7 @@ function details(user: any, direction = "") {
   const symbolMeaning = avatar.symbolMeaning || "metáfora do papel atual";
   const character = avatar.character || "figura simbólica editorial";
   const action = avatar.action || `encena o manifesto ${user.manifesto}`;
-  const satiricalDetail =
-    avatar.satiricalDetail || "um detalhe burocrático discretamente absurdo";
+  const satiricalDetail = avatar.satiricalDetail || "um detalhe burocrático discretamente absurdo";
   const cleanDirection = String(direction || "")
     .trim()
     .slice(0, 300);
@@ -116,8 +110,7 @@ export async function POST(request: Request) {
   });
   const data = (await response.json()) as any;
   if (!response.ok) {
-    const message =
-      data?.error?.message || "A API não conseguiu gerar a imagem.";
+    const message = data?.error?.message || "A API não conseguiu gerar a imagem.";
     const billing = /billing|credit|quota|balance|limit/i.test(message);
     return Response.json(
       {
@@ -131,10 +124,7 @@ export async function POST(request: Request) {
   }
   const b64 = data?.data?.[0]?.b64_json;
   if (!b64)
-    return Response.json(
-      { error: "A API não devolveu uma imagem utilizável." },
-      { status: 502 },
-    );
+    return Response.json({ error: "A API não devolveu uma imagem utilizável." }, { status: 502 });
   const imageKey = `avatars/${user.id}/${crypto.randomUUID()}.png`;
   await env.BUCKET.put(imageKey, decodeBase64(b64), {
     httpMetadata: {
@@ -148,16 +138,14 @@ export async function POST(request: Request) {
     .update(avatarGenerations)
     .set({ active: false })
     .where(eq(avatarGenerations.userId, user.id));
-  await db
-    .insert(avatarGenerations)
-    .values({
-      id: generationId,
-      userId: user.id,
-      imageKey,
-      prompt: generation.prompt,
-      direction: generation.direction,
-      active: true,
-    });
+  await db.insert(avatarGenerations).values({
+    id: generationId,
+    userId: user.id,
+    imageKey,
+    prompt: generation.prompt,
+    direction: generation.direction,
+    active: true,
+  });
   await db
     .update(users)
     .set({
@@ -166,21 +154,19 @@ export async function POST(request: Request) {
       updatedAt: sql`CURRENT_TIMESTAMP`,
     })
     .where(eq(users.id, user.id));
-  await db
-    .insert(activityEvents)
-    .values({
-      userId: user.id,
-      action: "avatar_generated",
-      entityType: "avatar_generation",
-      entityId: generationId,
-      metadataJson: JSON.stringify({
-        imageKey,
-        prompt: generation.prompt,
-        direction: generation.direction,
-        factors: generation.factors,
-        settings: generation.settings,
-      }),
-    });
+  await db.insert(activityEvents).values({
+    userId: user.id,
+    action: "avatar_generated",
+    entityType: "avatar_generation",
+    entityId: generationId,
+    metadataJson: JSON.stringify({
+      imageKey,
+      prompt: generation.prompt,
+      direction: generation.direction,
+      factors: generation.factors,
+      settings: generation.settings,
+    }),
+  });
   return Response.json({ ok: true, url: `/avatar/${user.id}?v=${Date.now()}` });
 }
 
@@ -216,14 +202,12 @@ export async function PATCH(request: Request) {
       updatedAt: sql`CURRENT_TIMESTAMP`,
     })
     .where(eq(users.id, user.id));
-  await db
-    .insert(activityEvents)
-    .values({
-      userId: user.id,
-      action: "avatar_version_selected",
-      entityType: "avatar_generation",
-      entityId: generation.id,
-      metadataJson: JSON.stringify({ imageKey: generation.imageKey }),
-    });
+  await db.insert(activityEvents).values({
+    userId: user.id,
+    action: "avatar_version_selected",
+    entityType: "avatar_generation",
+    entityId: generation.id,
+    metadataJson: JSON.stringify({ imageKey: generation.imageKey }),
+  });
   return Response.json({ ok: true });
 }
