@@ -9,3 +9,5 @@ next-env.d.ts
 transfer-manifest.jsonl
 *.sqlite
 praca-d1.sql
+.wrangler
+.sites-runtime

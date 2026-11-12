@@ -1,1 +1,0 @@
-ALTER TABLE `common_assets` ADD `placement_json` text DEFAULT '{}' NOT NULL;
