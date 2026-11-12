@@ -11,3 +11,5 @@ transfer-manifest.jsonl
 praca-d1.sql
 .wrangler
 .sites-runtime
+.env*
+!.env.example
