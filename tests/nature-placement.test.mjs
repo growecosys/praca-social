@@ -107,7 +107,7 @@ test("image generation saves a resumable draft, submission validates ownership a
   let calls = 0,
     user = { id: "a", username: "ana", profileComplete: true };
   globalThis.__natureTest = {
-    env: { DB: db, BUCKET: { async put() {} }, OPENAI_API_KEY: "test-only" },
+    env: { DB: db, BUCKET: { async put() {} } },
     auth: () => ({ user }),
     user: () => user,
     validate: async () => ({ valid: true, element: "Arara" }),
