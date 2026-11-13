@@ -105,7 +105,7 @@ export default function Ritual({
           sua identidade · {name}
         </p>
         <OnboardingProgress account email={emailConfirmed} dark />
-        <h1 className="mt-5 font-serif text-[clamp(3.6rem,9vw,7rem)] leading-[.88] tracking-[-.055em]">
+        <h1 className="mt-5 font-serif text-[clamp(3.6rem,9vw,7rem)] leading-[.88] tracking-[-.035em]">
           Cinco perguntas.
           <br />
           <span className="text-[#f0c64b]">Três palavras.</span>

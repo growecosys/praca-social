@@ -111,7 +111,7 @@ export default async function PublishedPost({ params }: { params: Promise<{ slug
         <p className="mb-8 text-xs font-semibold uppercase tracking-[0.22em] text-[#667064]">
           publicado na praça
         </p>
-        <h1 className="font-serif text-[clamp(2.8rem,7vw,5.5rem)] font-medium leading-[0.98] tracking-[-0.045em]">
+        <h1 className="font-serif text-[clamp(2.8rem,7vw,5.5rem)] font-medium leading-[0.98] tracking-[-.025em]">
           {post.title}
         </h1>
         <div className="post-byline mt-8 flex items-center gap-4 border-b border-[#d8d0c1] pb-6 text-sm text-[#667064]">

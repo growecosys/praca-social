@@ -302,7 +302,7 @@ export default function Editor({
             rows={2}
             placeholder="Título"
             aria-label="Título"
-            className="block w-full resize-none bg-transparent font-serif text-[clamp(2.8rem,7vw,5.6rem)] font-medium leading-[0.98] tracking-[-0.045em] outline-none placeholder:text-[#99978f]"
+            className="block w-full resize-none bg-transparent font-serif text-[clamp(2.8rem,7vw,5.6rem)] font-medium leading-[0.98] tracking-[-.025em] outline-none placeholder:text-[#99978f]"
           />
           <p className="mt-7 border-b border-[#d8d0c1] pb-5 text-sm text-[#667064]">
             por <span className="text-[#1f241d]">{author}</span>

@@ -61,7 +61,7 @@ export default async function Mural() {
       <section
         id="conteudo-principal"
         tabIndex={-1}
-        className="nature-mural-content relative mx-auto max-w-[1160px] px-5 pb-28 pt-14 sm:px-8 md:pt-20"
+        className="nature-mural-content relative mx-auto max-w-[1180px] px-4 pb-28 pt-14 sm:px-8 md:pt-20"
       >
         <PageBack href="/" label="Voltar ao início" />
         <div className="nature-mural-heading border-b border-[#c8c0b1] pb-9">
@@ -70,7 +70,7 @@ export default async function Mural() {
               publicações abertas
             </p>
             <NatureSpot kind="title" className="nature-mural-visitor" />
-            <h1 className="mt-4 font-serif text-[clamp(3.8rem,10vw,8.5rem)] font-medium leading-[0.82] tracking-[-0.065em]">
+            <h1 className="mt-4 font-serif text-[clamp(3.8rem,10vw,8.5rem)] font-medium leading-[.88] tracking-[-.035em]">
               Mural
             </h1>
           </div>
@@ -118,7 +118,7 @@ export default async function Mural() {
                   </a>
                 )}
                 <a href={`/p/${latest.slug}`}>
-                  <h2 className="font-serif text-[clamp(2.7rem,6vw,5.3rem)] font-medium leading-[0.96] tracking-[-0.045em] decoration-1 underline-offset-8 group-hover:underline">
+                  <h2 className="font-serif text-[clamp(2.7rem,6vw,5.3rem)] font-medium leading-[0.96] tracking-[-.025em] decoration-1 underline-offset-8 group-hover:underline">
                     {latest.title}
                   </h2>
                 </a>

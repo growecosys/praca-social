@@ -80,7 +80,11 @@ export default async function ConnectionsPage({
     return (
       <main className="min-h-screen bg-[#f5f1e8] text-[#14261b]">
         <SiteHeader active="conexoes" />
-        <section id="conteudo-principal" tabIndex={-1} className="mx-auto max-w-4xl px-5 py-12">
+        <section
+          id="conteudo-principal"
+          tabIndex={-1}
+          className="mx-auto max-w-4xl px-4 py-12 sm:px-8"
+        >
           <PageBack />
           <NatureSpot kind="title" />
           <h1 className="font-serif text-6xl">Conexões</h1>
@@ -188,7 +192,7 @@ export default async function ConnectionsPage({
       <section
         id="conteudo-principal"
         tabIndex={-1}
-        className="mx-auto max-w-[1180px] px-5 pb-24 pt-8 sm:px-8"
+        className="mx-auto max-w-[1180px] px-4 pb-24 pt-8 sm:px-8"
       >
         <PageBack />
         <div className="flex flex-wrap items-end justify-between gap-5">

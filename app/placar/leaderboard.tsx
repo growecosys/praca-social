@@ -94,7 +94,7 @@ export default function Leaderboard() {
     <section
       id="conteudo-principal"
       tabIndex={-1}
-      className="relative mx-auto max-w-[1180px] px-5 pb-28 pt-14 sm:px-8 md:pt-20"
+      className="relative mx-auto max-w-[1180px] px-4 pb-28 pt-14 sm:px-8 md:pt-20"
     >
       <div className="relative">
         <PageBack />
@@ -103,7 +103,7 @@ export default function Leaderboard() {
         </p>
         <div className="mt-4 flex flex-col justify-between gap-8 border-b border-white/15 pb-10 lg:flex-row lg:items-end">
           <div>
-            <h1 className="font-serif text-[clamp(4rem,11vw,9rem)] font-medium leading-[0.78] tracking-[-0.07em]">
+            <h1 className="font-serif text-[clamp(4rem,11vw,9rem)] font-medium leading-[.88] tracking-[-.035em]">
               Placar
               <br />
               <span className="text-[#f0c64b]">da Praça</span>

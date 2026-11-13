@@ -62,13 +62,13 @@ export default function Entry({
       <section
         id="conteudo-principal"
         tabIndex={-1}
-        className="mx-auto grid max-w-6xl items-start gap-8 px-5 py-8 lg:grid-cols-[1.2fr_.8fr] lg:px-8"
+        className="mx-auto grid max-w-[1180px] items-start gap-8 px-4 py-8 sm:px-8 lg:grid-cols-[1.2fr_.8fr]"
       >
         <div>
           <p className="text-xs font-semibold uppercase tracking-[.22em] text-[#667064]">
             comece por aqui
           </p>
-          <h1 className="mt-5 max-w-3xl font-serif text-[clamp(2.8rem,8vw,7rem)] leading-[.82] tracking-[-.065em]">
+          <h1 className="mt-5 max-w-3xl font-serif text-[clamp(2.8rem,8vw,7rem)] leading-[.88] tracking-[-.035em]">
             Crie sua
             <br />
             identidade.

@@ -63,7 +63,7 @@ export default async function PublicProfile({ params }: { params: Promise<{ user
   return (
     <main className="min-h-screen bg-[#f5f1e8] text-[#1f241d]">
       <SiteHeader active={viewer?.id === profile.id ? "perfil" : "mural"} />
-      <section className="mx-auto max-w-[1160px] px-5 pb-28 pt-12 sm:px-8 md:pt-20">
+      <section className="mx-auto max-w-[1180px] px-4 pb-28 pt-12 sm:px-8 md:pt-20">
         <PageBack />
         <div className="grid gap-10 border-b border-[#c8c0b1] pb-14 lg:grid-cols-[320px_1fr]">
           <div>
@@ -77,7 +77,7 @@ export default async function PublicProfile({ params }: { params: Promise<{ user
             <p className="text-xs font-semibold uppercase tracking-[.22em] text-[#667064]">
               habitante da praça · @{profile.username}
             </p>
-            <h1 className="mt-4 font-serif text-[clamp(4rem,9vw,8rem)] leading-[.82] tracking-[-.06em]">
+            <h1 className="mt-4 font-serif text-[clamp(4rem,9vw,8rem)] leading-[.88] tracking-[-.035em]">
               {profile.displayName}
             </h1>
             <p className="mt-6 font-serif text-3xl text-[#244e35]">{profile.roleTitle}</p>
