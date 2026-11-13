@@ -5,7 +5,6 @@ import { getDatabase, type Database } from "./sql";
 interface PracaEnv {
   readonly DB: Database;
   readonly BUCKET: Bucket | undefined;
-  readonly OPENAI_API_KEY: string | undefined;
   readonly RESEND_API_KEY: string | undefined;
   readonly AUTH_EMAIL_FROM: string | undefined;
   readonly AUTH_EMAIL_ORIGIN: string | undefined;
@@ -21,9 +20,6 @@ export const env: PracaEnv = {
   },
   get BUCKET() {
     return process.env.BLOB_READ_WRITE_TOKEN ? bucket : undefined;
-  },
-  get OPENAI_API_KEY() {
-    return process.env.OPENAI_API_KEY;
   },
   get RESEND_API_KEY() {
     return process.env.RESEND_API_KEY;

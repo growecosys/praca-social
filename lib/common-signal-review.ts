@@ -1,4 +1,5 @@
 import { signalAnalysis } from "./common-signals";
+import { createResponse } from "./ai";
 
 type Candidate = { id: string; body: string; page: string };
 
@@ -33,15 +34,11 @@ const schema = {
 };
 
 export async function reviewSignal(
-  key: string,
   signal: Pick<Candidate, "body" | "page">,
   candidates: Candidate[],
 ) {
-  const response = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: { authorization: "Bearer " + key, "content-type": "application/json" },
-    signal: AbortSignal.timeout(15000),
-    body: JSON.stringify({
+  const response = await createResponse(
+    {
       model: "gpt-6-luna",
       store: false,
       reasoning: { effort: "none" },
@@ -51,8 +48,9 @@ investigate: falha verificável, risco sério ou relato que precisa de investiga
 Use relatedId só quando um candidato trata do mesmo problema ou decisão específica, preserve diferenças importantes na explicação e use apenas um ID fornecido. Casos parecidos de causas ou escopos distintos permanecem separados.`,
       input: JSON.stringify({ signal, candidates }),
       text: { format: { type: "json_schema", name: "praca_signal_review", strict: true, schema } },
-    }),
-  });
+    },
+    AbortSignal.timeout(15000),
+  );
   if (!response.ok) throw Error("Signal review unavailable");
   const data = (await response.json()) as {
     output?: { content?: { type: string; text?: string }[] }[];

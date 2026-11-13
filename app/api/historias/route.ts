@@ -11,6 +11,7 @@ import {
 } from "../../../lib/stories-store";
 import { StoryError, availableStoryActions, PREMISE } from "../../../lib/stories";
 import { reserveRpgCall } from "../../../lib/rpg-store";
+import { createResponse } from "../../../lib/ai";
 const json = (data: unknown, status = 200) =>
   Response.json(data, { status, headers: { "cache-control": "no-store" } });
 async function view(row: any, userId: string | null) {
@@ -83,12 +84,6 @@ export async function POST(request: Request) {
       const intent = typeof p.intent === "string" ? p.intent.trim() : "";
       if (intent.length < 4 || intent.length > 900)
         throw new StoryError("Escreva de 4 a 900 caracteres.");
-      const key = (env as unknown as { OPENAI_API_KEY?: string }).OPENAI_API_KEY;
-      if (!key)
-        throw new StoryError(
-          "O mestre está sem conexão. As ações sugeridas continuam disponíveis.",
-          503,
-        );
       let remaining: number;
       try {
         remaining = await reserveRpgCall(
@@ -108,11 +103,8 @@ export async function POST(request: Request) {
         );
       }
       const actions = availableStoryActions(row.state);
-      const response = await fetch("https://api.openai.com/v1/responses", {
-        method: "POST",
-        headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-        signal: AbortSignal.timeout(25000),
-        body: JSON.stringify({
+      const response = await createResponse(
+        {
           model: "gpt-6-luna",
           store: false,
           reasoning: { effort: "none" },
@@ -155,8 +147,9 @@ export async function POST(request: Request) {
               },
             },
           },
-        }),
-      });
+        },
+        AbortSignal.timeout(25000),
+      );
       if (!response.ok)
         throw new StoryError(
           "O mestre não respondeu. Sua ação não foi gasta; você pode usar uma sugestão.",

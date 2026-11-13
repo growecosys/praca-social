@@ -12,7 +12,6 @@ test("post images require confirmation, reserve quota atomically and never dupli
       "utf8",
     ),
   );
-  const originalFetch = globalThis.fetch;
   let calls = 0;
   const DB = {
     prepare(sql) {
@@ -35,12 +34,12 @@ test("post images require confirmation, reserve quota atomically and never dupli
     },
   };
   globalThis.__imageTest = {
-    env: { OPENAI_API_KEY: "test-only", BUCKET: { put: async () => {} }, DB },
+    env: { BUCKET: { put: async () => {} }, DB },
     auth: async () => ({ user: { id: "tester" } }),
-  };
-  globalThis.fetch = async () => {
-    calls++;
-    return Response.json({ data: [{ b64_json: btoa("test image") }] });
+    createImage: async () => {
+      calls++;
+      return { ok: true, bytes: new TextEncoder().encode("test image"), mediaType: "image/webp" };
+    },
   };
   try {
     let source = await readFile(
@@ -51,6 +50,10 @@ test("post images require confirmation, reserve quota atomically and never dupli
       .replace(
         /import \{ env \} from ["'][./]*\/lib\/env["'];/,
         "const env=globalThis.__imageTest.env;",
+      )
+      .replace(
+        /import \{ createImage \} from ["']\.\.\/\.\.\/\.\.\/lib\/ai["'];/,
+        "const createImage=globalThis.__imageTest.createImage;",
       )
       .replace(
         /import \{ requirePracaUser \} from ["']\.\.\/\.\.\/\.\.\/lib\/praca-auth["'];/,
@@ -88,7 +91,6 @@ test("post images require confirmation, reserve quota atomically and never dupli
     assert.equal(db.prepare("SELECT count(*) n FROM post_images").get().n, 3);
     assert.equal((await run({ ...payload, requestId: crypto.randomUUID() })).status, 429);
   } finally {
-    globalThis.fetch = originalFetch;
     delete globalThis.__imageTest;
     db.close();
   }

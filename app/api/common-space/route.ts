@@ -158,8 +158,7 @@ export async function POST(request: Request) {
     typeof p.element === "string" ? p.element.normalize("NFC").trim().replace(/\s+/g, " ") : "";
   if (!/^[\p{L}\p{M}\s-]{3,60}$/u.test(element) || element.split(" ").length > 7)
     return fail("Informe somente o nome de um elemento natural, como jabuticaba ou arara-canindé.");
-  const key = (env as any).OPENAI_API_KEY;
-  if (!key || !env.BUCKET) return fail("A geração está temporariamente indisponível.", 503);
+  if (!env.BUCKET) return fail("A geração está temporariamente indisponível.", 503);
   const id = crypto.randomUUID();
   const reserved = await db
     .prepare(
@@ -171,7 +170,7 @@ export async function POST(request: Request) {
     return fail("Você já utilizou sua geração neste mês ou tem uma geração em andamento.", 429);
   let imageRequested = false;
   try {
-    const normalized = await validateCommonElement(key, element);
+    const normalized = await validateCommonElement(element);
     if (!normalized.valid || !/^[-\p{L}\p{M}\s]{3,80}$/u.test(normalized.element)) {
       await db.prepare("UPDATE common_generations SET status='failed' WHERE id=?").bind(id).run();
       return fail(
@@ -182,7 +181,7 @@ export async function POST(request: Request) {
     imageRequested = true;
     let bytes: Uint8Array;
     try {
-      bytes = await generateCommonImage(key, prompt);
+      bytes = await generateCommonImage(prompt);
     } catch (e) {
       if (e instanceof CommonApiError && e.detail.stage === "image") imageRequested = false;
       throw e;

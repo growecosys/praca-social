@@ -1,4 +1,5 @@
 import { env } from "../../../lib/env";
+import { createImage } from "../../../lib/ai";
 import { requirePracaUser } from "../../../lib/praca-auth";
 const LIMIT = 3;
 async function state(userId: string) {
@@ -37,8 +38,7 @@ export async function POST(request: Request) {
       { error: "Revise um prompt de 20 a 6.000 caracteres e confirme a geração." },
       { status: 400 },
     );
-  const key = (env as any).OPENAI_API_KEY;
-  if (!key || !env.BUCKET)
+  if (!env.BUCKET)
     return Response.json(
       { error: "A geração está temporariamente indisponível." },
       { status: 503 },
@@ -74,21 +74,14 @@ export async function POST(request: Request) {
       { status: 429 },
     );
   try {
-    const response = await fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST",
-      headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-      body: JSON.stringify({
-        model: "gpt-image-2",
-        prompt: p.prompt.trim(),
-        n: 1,
-        size: "1024x1024",
-        quality: "low",
-        output_format: "webp",
-      }),
+    const image = await createImage({
+      model: "gpt-image-2",
+      prompt: p.prompt.trim(),
+      format: "webp",
+      quality: "low",
       signal: AbortSignal.timeout(180000),
     });
-    const data: any = await response.json();
-    if (!response.ok) {
+    if (!image.ok) {
       await env.DB.prepare("UPDATE post_images SET status='failed' WHERE id=?")
         .bind(p.requestId)
         .run();
@@ -100,11 +93,8 @@ export async function POST(request: Request) {
         { status: 502 },
       );
     }
-    const b64 = data?.data?.[0]?.b64_json;
-    if (!b64) throw Error("Image missing");
-    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
     const imageKey = `${crypto.randomUUID()}.webp`;
-    await env.BUCKET.put(imageKey, bytes, {
+    await env.BUCKET.put(imageKey, image.bytes, {
       httpMetadata: {
         contentType: "image/webp",
         cacheControl: "public, max-age=31536000, immutable",

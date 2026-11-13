@@ -2,6 +2,7 @@ import { eq, sql } from "drizzle-orm";
 import { env } from "../../../../lib/env";
 import { getDb } from "../../../../db";
 import { activityEvents, avatarGenerations, users, nowText } from "../../../../db/schema";
+import { createImage } from "../../../../lib/ai";
 import { requirePracaUser } from "../../../../lib/praca-auth";
 
 const MODEL = "gpt-image-2";
@@ -9,12 +10,6 @@ const STYLE =
   "square minimal satirical editorial avatar, bold geometric vector-like illustration, sophisticated political poster energy, symbolic creature or mask, flat shapes, high contrast";
 const RULES =
   "no realistic human face, no text, no letters, no logo; respectful satire; avoid stereotypes and sensitive attributes";
-function decodeBase64(value: string) {
-  const binary = atob(value);
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
-  return bytes;
-}
 function details(user: any, direction = "") {
   const answers = JSON.parse(user.answersJson || "[]") as string[];
   let avatar: any = {};
@@ -88,51 +83,33 @@ export async function POST(request: Request) {
     payload = await request.json();
   } catch {}
   const generation = details(user, payload.direction);
-  const key = env.OPENAI_API_KEY;
-  if (!key)
-    return Response.json(
-      { error: "A chave da API de imagens não está configurada." },
-      { status: 503 },
-    );
   const bucket = env.BUCKET;
   if (!bucket)
     return Response.json(
       { error: "O armazenamento de imagens está indisponível." },
       { status: 503 },
     );
-  const response = await fetch("https://api.openai.com/v1/images/generations", {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${key}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      prompt: generation.prompt,
-      size: "1024x1024",
-      quality: "low",
-      output_format: "png",
-    }),
+  const image = await createImage({
+    model: MODEL,
+    prompt: generation.prompt,
+    format: "png",
+    quality: "low",
+    signal: AbortSignal.timeout(180000),
   });
-  const data = (await response.json()) as any;
-  if (!response.ok) {
-    const message = data?.error?.message || "A API não conseguiu gerar a imagem.";
-    const billing = /billing|credit|quota|balance|limit/i.test(message);
+  if (!image.ok) {
+    const billing = /billing|credit|quota|balance|limit/i.test(image.message);
     return Response.json(
       {
         error: billing
           ? "A geração de imagem está sem créditos ou limite disponível no projeto da API."
-          : message,
+          : image.message,
         billing,
       },
-      { status: response.status },
+      { status: image.status },
     );
   }
-  const b64 = data?.data?.[0]?.b64_json;
-  if (!b64)
-    return Response.json({ error: "A API não devolveu uma imagem utilizável." }, { status: 502 });
   const imageKey = `avatars/${user.id}/${crypto.randomUUID()}.png`;
-  await bucket.put(imageKey, decodeBase64(b64), {
+  await bucket.put(imageKey, image.bytes, {
     httpMetadata: {
       contentType: "image/png",
       cacheControl: "public, max-age=31536000, immutable",

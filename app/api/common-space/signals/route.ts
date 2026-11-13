@@ -123,8 +123,6 @@ export async function POST(request: Request) {
       );
   }
 
-  const key = (env as unknown as { OPENAI_API_KEY?: string }).OPENAI_API_KEY;
-  if (!key) return Response.json({ ok: true, id });
   const signal = await env.DB.prepare(
     `
     UPDATE common_signals SET started_at = ?, attempts = attempts + 1
@@ -147,7 +145,7 @@ export async function POST(request: Request) {
       )
         .bind(id, now, signal.page)
         .all<{ id: string; body: string; page: string }>();
-      const result = await reviewSignal(key, signal, candidates);
+      const result = await reviewSignal(signal, candidates);
       await env.DB.prepare(
         "UPDATE common_signals SET analysis = ?, related_id = ? WHERE id = ? AND started_at = ?",
       )

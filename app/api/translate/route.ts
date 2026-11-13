@@ -1,3 +1,4 @@
+import { createResponse } from "../../../lib/ai";
 function outputText(data: any) {
   if (typeof data?.output_text === "string") return data.output_text;
   return (data?.output || [])
@@ -19,9 +20,6 @@ export async function POST(request: Request) {
     )
       return Response.json({ error: "Lote de tradução inválido." }, { status: 400 });
     const texts = payload.texts as string[];
-    const { env } = await import("../../../lib/env");
-    const key = (env as any).OPENAI_API_KEY;
-    if (!key) return Response.json({ error: "Tradução indisponível." }, { status: 503 });
     const schema = {
       type: "object",
       properties: {
@@ -35,18 +33,14 @@ export async function POST(request: Request) {
       required: ["translations"],
       additionalProperties: false,
     };
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-      body: JSON.stringify({
-        model: "gpt-6-luna",
-        store: false,
-        reasoning: { effort: "none" },
-        instructions:
-          "Translate each item from Brazilian Portuguese to natural English. Preserve order, names, usernames, URLs, emoji, numbers, formatting, and the Praça brand name. Preserve the original tone, including satire. If an item is already English or is a proper name, keep it unchanged. Return only the required JSON.",
-        input: JSON.stringify(texts),
-        text: { format: { type: "json_schema", name: "page_translation", strict: true, schema } },
-      }),
+    const response = await createResponse({
+      model: "gpt-6-luna",
+      store: false,
+      reasoning: { effort: "none" },
+      instructions:
+        "Translate each item from Brazilian Portuguese to natural English. Preserve order, names, usernames, URLs, emoji, numbers, formatting, and the Praça brand name. Preserve the original tone, including satire. If an item is already English or is a proper name, keep it unchanged. Return only the required JSON.",
+      input: JSON.stringify(texts),
+      text: { format: { type: "json_schema", name: "page_translation", strict: true, schema } },
     });
     const data = await response.json();
     if (!response.ok)

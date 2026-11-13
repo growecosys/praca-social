@@ -24,7 +24,7 @@ npm run dev                  # http://localhost:3000
 | `DATABASE_URL`                                 | Pooled Neon connection used by the app                                 |
 | `DATABASE_URL_UNPOOLED`                        | Direct Neon connection used by migration and import scripts            |
 | `BLOB_READ_WRITE_TOKEN`                        | Private Vercel Blob store (uploads, avatars, generated images)         |
-| `OPENAI_API_KEY`                               | AI features (guide, assistant, image generation); optional             |
+| _(none)_                                       | AI features use the Vercel AI Gateway; Vercel authenticates it automatically, so no key is needed |
 | `RESEND_API_KEY`, `AUTH_EMAIL_FROM`, `AUTH_EMAIL_ORIGIN` | E-mail access links; optional. `AUTH_EMAIL_ORIGIN` must be the HTTPS origin of the environment that receives the links |
 
 ## Scripts

@@ -4,6 +4,7 @@ import { activityEvents, assistantUsage, posts, referrals, nowText } from "../..
 import { GUIDE_ACTIONS, GUIDE_INSTRUCTIONS, type GuideAction } from "../../../lib/guide-knowledge";
 import { getPracaUser } from "../../../lib/praca-auth";
 import { jsonWithVisitor, visitorFromRequest } from "../../../lib/visitor";
+import { createResponse } from "../../../lib/ai";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -125,32 +126,21 @@ export async function POST(request: Request) {
         : null,
     };
 
-    const { env } = await import("../../../lib/env");
-    const apiKey = (env as unknown as { OPENAI_API_KEY?: string }).OPENAI_API_KEY;
-    if (!apiKey)
-      return jsonWithVisitor({ error: "O chat ainda não foi configurado." }, visitor, {
-        status: 503,
-      });
-
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
-      body: JSON.stringify({
-        model: "gpt-6-luna",
-        store: false,
-        reasoning: { effort: "none" },
-        max_output_tokens: 420,
-        instructions: `${GUIDE_INSTRUCTIONS}\n\nLANGUAGE: Answer entirely in ${language}, including button labels. Keep Praça as the product name.\n\nCONTEXTO ATUAL DA CONTA (dados confiáveis do servidor):\n${JSON.stringify(accountContext)}`,
-        input: messages,
-        text: {
-          format: {
-            type: "json_schema",
-            name: "praca_guide",
-            strict: true,
-            schema: responseSchema,
-          },
+    const response = await createResponse({
+      model: "gpt-6-luna",
+      store: false,
+      reasoning: { effort: "none" },
+      max_output_tokens: 420,
+      instructions: `${GUIDE_INSTRUCTIONS}\n\nLANGUAGE: Answer entirely in ${language}, including button labels. Keep Praça as the product name.\n\nCONTEXTO ATUAL DA CONTA (dados confiáveis do servidor):\n${JSON.stringify(accountContext)}`,
+      input: messages,
+      text: {
+        format: {
+          type: "json_schema",
+          name: "praca_guide",
+          strict: true,
+          schema: responseSchema,
         },
-      }),
+      },
     });
     const data = (await response.json()) as any;
     if (!response.ok) throw new Error(data?.error?.message || "A IA não conseguiu responder.");

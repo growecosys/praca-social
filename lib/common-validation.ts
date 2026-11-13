@@ -1,32 +1,24 @@
+import { createImage, createResponse } from "./ai";
 export const COMMON_IMAGE_MODEL = "gpt-image-1.5";
-export async function generateCommonImage(key: string, prompt: string) {
-  const response = await fetch("https://api.openai.com/v1/images/generations", {
-    method: "POST",
-    headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-    body: JSON.stringify({
-      model: COMMON_IMAGE_MODEL,
-      prompt,
-      n: 1,
-      size: "1024x1024",
-      quality: "low",
-      background: "transparent",
-      output_format: "webp",
-    }),
+export async function generateCommonImage(prompt: string) {
+  const result = await createImage({
+    model: COMMON_IMAGE_MODEL,
+    prompt,
+    format: "webp",
+    quality: "low",
+    background: "transparent",
     signal: AbortSignal.timeout(180000),
   });
-  const data: any = await response.json();
-  if (!response.ok) throw commonError("image", response, data);
-  const b64 = data?.data?.[0]?.b64_json;
-  if (!b64)
+  if (!result.ok)
     throw new CommonApiError({
-      stage: "image_result",
-      status: 502,
-      code: "missing_image",
+      stage: "image",
+      status: result.status,
+      code: "api_error",
       param: "",
-      requestId: response.headers.get("x-request-id") || "",
-      message: "A API não devolveu uma imagem utilizável.",
+      requestId: "",
+      message: result.message.slice(0, 500),
     });
-  return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  return result.bytes;
 }
 export class CommonApiError extends Error {
   constructor(
@@ -57,11 +49,9 @@ export function commonError(stage: string, response: Response, data: any) {
       .slice(0, 500),
   });
 }
-export async function validateCommonElement(key: string, element: string) {
-  const response = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-    body: JSON.stringify({
+export async function validateCommonElement(element: string) {
+  const response = await createResponse(
+    {
       model: "gpt-6-luna",
       store: false,
       reasoning: { effort: "none" },
@@ -82,9 +72,9 @@ export async function validateCommonElement(key: string, element: string) {
           },
         },
       },
-    }),
-    signal: AbortSignal.timeout(30000),
-  });
+    },
+    AbortSignal.timeout(30000),
+  );
   const data: any = await response.json();
   if (!response.ok || data.status === "incomplete") throw commonError("validation", response, data);
   const text =
