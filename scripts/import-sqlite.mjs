@@ -3,8 +3,10 @@
 //   npx wrangler d1 export <database-name> --remote --output=praca-d1.sql
 //   node scripts/import-sqlite.mjs praca-d1.sql            validate in a transaction, then roll back
 //   node scripts/import-sqlite.mjs praca-d1.sql --apply    import and commit
+//   --clear-existing   first empty every destination table (in the same transaction, so a dry run
+//                      rolls it back too). Use it to replace a throwaway test account or seeded defaults.
 //
-// The input may be a D1 `.sql` export or an already restored SQLite file.
+// The input may be a `praca-d1-jsonl` export (.jsonl), a D1 `.sql` export, or a restored SQLite file.
 //
 // IDs, UUIDs, hashes, salts, JSON payloads and timestamps are copied verbatim. Identity
 // sequences are advanced past the imported maximum. The target must be empty. Exits non-zero
@@ -14,7 +16,68 @@ import { DatabaseSync } from "node:sqlite";
 import pg from "pg";
 
 const quote = (name) => `"${name.replace(/"/g, '""')}"`;
+/**
+ * Loads the app's own `praca-d1-jsonl` export into an in-memory SQLite database. Refuses a file
+ * that is truncated or inconsistent: a header, the per-table `table_end` counts and the footer
+ * counts must all agree with the rows actually read. Columns are created untyped so every value
+ * is copied exactly as exported.
+ */
+export function openJsonlExport(file) {
+  const sqlite = new DatabaseSync(":memory:");
+  const quoteId = (name) => `"${String(name).replace(/"/g, '""')}"`;
+  const inserts = new Map();
+  const loaded = new Map();
+  const declared = new Map();
+  let header = false;
+  let footer = null;
+  readFileSync(file, "utf8")
+    .split("\n")
+    .forEach((line, index) => {
+      if (!line.trim()) return;
+      let entry;
+      try {
+        entry = JSON.parse(line);
+      } catch {
+        throw new Error(`${file}: line ${index + 1} is not valid JSON.`);
+      }
+      if (entry.type === "header") {
+        if (entry.format !== "praca-d1-jsonl")
+          throw new Error(`${file}: unsupported export format ${JSON.stringify(entry.format)}.`);
+        header = true;
+      } else if (entry.type === "table") {
+        const names = entry.columns.map((column) => column.name);
+        sqlite.exec(`CREATE TABLE ${quoteId(entry.name)} (${names.map(quoteId).join(", ")})`);
+        inserts.set(entry.name, {
+          names,
+          statement: sqlite.prepare(
+            `INSERT INTO ${quoteId(entry.name)} (${names.map(quoteId).join(", ")}) VALUES (${names.map(() => "?").join(", ")})`,
+          ),
+        });
+        loaded.set(entry.name, 0);
+      } else if (entry.type === "row") {
+        const insert = inserts.get(entry.table);
+        if (!insert) throw new Error(`${file}: row for unknown table ${entry.table}.`);
+        insert.statement.run(...insert.names.map((name) => entry.data[name] ?? null));
+        loaded.set(entry.table, loaded.get(entry.table) + 1);
+      } else if (entry.type === "table_end") {
+        declared.set(entry.name, entry.rows);
+      } else if (entry.counts) {
+        footer = entry.counts;
+      }
+    });
+  if (!header) throw new Error(`${file}: missing export header.`);
+  if (!footer) throw new Error(`${file}: missing footer; the export is incomplete.`);
+  for (const [table, count] of loaded) {
+    if (declared.get(table) !== count || footer[table] !== count)
+      throw new Error(
+        `${file}: ${table} has ${count} rows but the export declares ${declared.get(table)} (footer ${footer[table]}).`,
+      );
+  }
+  return sqlite;
+}
+
 export function openExport(file) {
+  if (/\.jsonl$/i.test(file)) return openJsonlExport(file);
   if (!/\.sql$/i.test(file)) return new DatabaseSync(file, { readOnly: true });
   const sqlite = new DatabaseSync(":memory:");
   sqlite.exec(readFileSync(file, "utf8"));
@@ -142,7 +205,9 @@ if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).
   const apply = process.argv.includes("--apply");
   const connectionString = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;
   if (!file)
-    throw new Error("Usage: node scripts/import-sqlite.mjs <export.sql|restored.sqlite> [--apply]");
+    throw new Error(
+      "Usage: node scripts/import-sqlite.mjs <export.jsonl|export.sql|restored.sqlite> [--apply]",
+    );
   if (!connectionString) throw new Error("DATABASE_URL is not set.");
 
   const client = new pg.Client({ connectionString });
@@ -150,6 +215,21 @@ if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).
   const sqlite = openExport(file);
   try {
     await client.query("BEGIN");
+    if (process.argv.includes("--clear-existing")) {
+      const tables = (
+        await client.query(
+          "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'",
+        )
+      ).rows
+        .map((row) => row.table_name)
+        .filter((name) => !IGNORED.test(name));
+      for (const table of tables) {
+        const { n } = (await client.query(`SELECT count(*)::int AS n FROM ${quote(table)}`))
+          .rows[0];
+        if (n) console.log(`[import] clearing ${table}: ${n} existing rows`);
+      }
+      await client.query(`TRUNCATE ${tables.map(quote).join(", ")} RESTART IDENTITY CASCADE`);
+    }
     const result = await importSqlite({ sqlite, target: client, log: console.log });
     console.table(result.report);
     console.log("Tables in the export that have no destination:", result.ignoredSqliteTables);

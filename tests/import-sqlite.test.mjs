@@ -124,3 +124,114 @@ test("a D1 .sql export can be opened directly, including its PRAGMA and sqlite_s
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test("a JSONL export is refused when truncated or when counts disagree, and loads verbatim when complete", async () => {
+  const { mkdtemp, writeFile, rm } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { openJsonlExport } = await import("../scripts/import-sqlite.mjs");
+  const dir = await mkdtemp(join(tmpdir(), "jsonl-export-"));
+  const lines = (...entries) => entries.map((entry) => JSON.stringify(entry)).join("\n");
+  const header = { type: "header", format: "praca-d1-jsonl", version: 1 };
+  const table = { type: "table", name: "notes", columns: [{ name: "id" }, { name: "body" }] };
+  const row = (id, body) => ({ type: "row", table: "notes", data: { id, body } });
+  try {
+    const complete = join(dir, "complete.jsonl");
+    await writeFile(
+      complete,
+      lines(
+        header,
+        table,
+        row(1, "Olá"),
+        row(2, null),
+        { type: "table_end", name: "notes", rows: 2 },
+        {
+          type: "footer",
+          counts: { notes: 2 },
+        },
+      ),
+    );
+    const sqlite = openJsonlExport(complete);
+    assert.deepEqual(
+      sqlite
+        .prepare("SELECT id, body FROM notes ORDER BY id")
+        .all()
+        .map((r) => ({ ...r })),
+      [
+        { id: 1, body: "Olá" },
+        { id: 2, body: null },
+      ],
+    );
+    sqlite.close();
+
+    const truncated = join(dir, "truncated.jsonl");
+    await writeFile(truncated, lines(header, table, row(1, "a")));
+    assert.throws(() => openJsonlExport(truncated), /footer/);
+
+    const mismatch = join(dir, "mismatch.jsonl");
+    await writeFile(
+      mismatch,
+      lines(
+        header,
+        table,
+        row(1, "a"),
+        { type: "table_end", name: "notes", rows: 2 },
+        {
+          type: "footer",
+          counts: { notes: 2 },
+        },
+      ),
+    );
+    assert.throws(() => openJsonlExport(mismatch), /declares 2/);
+
+    const wrongFormat = join(dir, "wrong.jsonl");
+    await writeFile(wrongFormat, lines({ type: "header", format: "something-else" }));
+    assert.throws(() => openJsonlExport(wrongFormat), /unsupported export format/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("a media TAR source needs a finished archive, stays inside its folder and checks sizes", async () => {
+  const { mkdtemp, mkdir, writeFile, rm } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { tarSource } = await import("../scripts/transfer-r2-to-blob.mjs");
+  const dir = await mkdtemp(join(tmpdir(), "tar-export-"));
+  try {
+    await mkdir(join(dir, "metadata"));
+    await mkdir(join(dir, "objects"));
+    await writeFile(join(dir, "objects", "0000000001"), "abc");
+    const meta = (key, exportedPath, size) =>
+      JSON.stringify({
+        key,
+        exportedPath,
+        size,
+        httpMetadata: { contentType: "image/png" },
+        customMetadata: { ownerId: "u" },
+      });
+    await writeFile(
+      join(dir, "metadata", "0000000001.json"),
+      meta("a.png", "objects/0000000001", 3),
+    );
+    assert.throws(() => tarSource(dir), /unfinished/);
+    await writeFile(join(dir, "complete.json"), "{}");
+    const source = tarSource(dir);
+    assert.deepEqual((await source.get("a.png")).metadata, { ownerId: "u" });
+    assert.equal((await source.get("a.png")).contentType, "image/png");
+
+    await writeFile(
+      join(dir, "metadata", "0000000002.json"),
+      meta("evil.png", "../../etc/passwd", 3),
+    );
+    await writeFile(
+      join(dir, "metadata", "0000000003.json"),
+      meta("short.png", "objects/0000000001", 99),
+    );
+    const strict = tarSource(dir);
+    await assert.rejects(strict.get("evil.png"), /escapes the archive/);
+    await assert.rejects(strict.get("short.png"), /recorded/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
