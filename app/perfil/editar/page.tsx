@@ -23,7 +23,7 @@ export default async function Page() {
       <section
         id="conteudo-principal"
         tabIndex={-1}
-        className="relative z-10 mx-auto max-w-2xl px-5 py-10 sm:px-8"
+        className="relative z-10 mx-auto max-w-2xl px-4 py-10 sm:px-8"
       >
         <a href="/perfil" className="inline-flex min-h-11 items-center text-sm underline">
           ← Voltar ao perfil

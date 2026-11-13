@@ -126,7 +126,7 @@ export default async function Page({
       <section
         id="conteudo-principal"
         tabIndex={-1}
-        className="mx-auto max-w-5xl space-y-8 px-5 py-10"
+        className="mx-auto max-w-5xl space-y-8 px-4 py-10 sm:px-8"
       >
         <a
           href="/conexoes?view=circles"

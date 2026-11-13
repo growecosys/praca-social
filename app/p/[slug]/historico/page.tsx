@@ -38,7 +38,7 @@ export default async function History({ params }: { params: Promise<{ slug: stri
   return (
     <main className="min-h-screen bg-[#f5f1e8] text-[#1f241d]">
       <SiteHeader active="mural" />
-      <section className="mx-auto max-w-4xl px-5 py-12">
+      <section className="mx-auto max-w-4xl px-4 py-12 sm:px-5">
         <a href={`/p/${slug}`} className="text-sm underline">
           ← Voltar ao texto
         </a>

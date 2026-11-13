@@ -21,7 +21,7 @@ export default async function Page() {
       <section
         id="conteudo-principal"
         tabIndex={-1}
-        className="relative z-10 mx-auto max-w-xl px-5 py-12"
+        className="relative z-10 mx-auto max-w-xl px-4 py-12 sm:px-5"
       >
         <div className="bg-[#f5f1e8]/95 p-4">
           <p className="text-sm text-[#667064]">Sua conta está pronta</p>

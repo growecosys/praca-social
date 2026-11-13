@@ -48,7 +48,7 @@ export default function DeleteAccountForm() {
     }
   }
   return (
-    <section className="mx-auto my-10 max-w-6xl px-5 sm:px-8" data-no-translate>
+    <section className="mx-auto my-10 max-w-[1180px] px-4 sm:px-8" data-no-translate>
       <div className="rounded-sm border-2 border-[#9b3a2f] bg-[#fff1ed] p-5 text-[#70261f]">
         <h2 className="font-serif text-2xl">Excluir conta</h2>
         <p className="my-3 max-w-2xl text-sm leading-6">

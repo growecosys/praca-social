@@ -739,6 +739,12 @@ main > .nature-separated-background {
 .nature-walking-header .nature-writing-header .nature-spot {
   height: 0 !important;
 }
+/* The ledge visitor would sit on top of the nav links below this width. */
+@media (max-width: 899px) {
+  .nature-walking-header > .nature-writing-header {
+    display: none;
+  }
+}
 .nature-walking-header .nature-writing-header .nature-inhabitant {
   top: auto;
   bottom: 0;
@@ -767,11 +773,13 @@ main > .nature-separated-background {
 .nature-writing-header .nature-ground-habitat {
   display: none;
 }
-.nature-walking-header nav {
-  min-height: 108px;
-  padding-right: 240px;
-  align-items: flex-end;
-  padding-bottom: 8px;
+@media (min-width: 900px) {
+  .nature-walking-header nav {
+    min-height: 108px;
+    padding-right: 240px;
+    align-items: flex-end;
+    padding-bottom: 8px;
+  }
 }
 @keyframes header-ledge-stroll {
   from {
@@ -789,10 +797,6 @@ main > .nature-separated-background {
   .nature-walking-header .nature-writing-header .nature-specimen {
     width: min(var(--inhabitant-width), 124px);
     right: 4px;
-  }
-  .nature-walking-header nav {
-    min-height: 100px;
-    padding-right: 140px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

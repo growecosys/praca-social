@@ -14,7 +14,10 @@ export default async function Page() {
     <main className="min-h-screen bg-[#f5f1e8] text-[#173a30]">
       <SiteHeader active="jogar" />
       <div id="conteudo-principal" tabIndex={-1}>
-        <a href="/jogar" className="mx-auto block max-w-[1180px] px-5 pt-6 text-sm underline">
+        <a
+          href="/jogar"
+          className="mx-auto block max-w-[1180px] px-4 pt-6 text-sm underline sm:px-8"
+        >
           ← Jogos da Praça
         </a>
         <AfterHours

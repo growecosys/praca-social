@@ -12,7 +12,7 @@ export default function Page() {
       <section
         id="conteudo-principal"
         tabIndex={-1}
-        className="mx-auto max-w-6xl px-5 py-10 sm:px-8 sm:py-14"
+        className="mx-auto max-w-[1180px] px-4 py-10 sm:px-8 sm:py-14"
       >
         <PageBack />
         <header className="mb-8 border-b border-[#c8c0b1] pb-7">

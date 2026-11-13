@@ -114,7 +114,7 @@ export default async function Profile() {
       <section
         id="conteudo-principal"
         tabIndex={-1}
-        className="mx-auto max-w-6xl px-5 py-14 sm:px-8"
+        className="mx-auto max-w-[1180px] px-4 py-14 sm:px-8"
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <PageBack />

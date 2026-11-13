@@ -15,7 +15,7 @@ export default async function Page({
   return (
     <main className="min-h-screen bg-[#f5f1e8] text-[#14261b]">
       <SiteHeader active="conexoes" />
-      <section className="mx-auto max-w-2xl space-y-8 px-5 py-14">
+      <section className="mx-auto max-w-2xl space-y-8 px-4 py-14 sm:px-5">
         <a href="/conexoes?view=circles">← Círculos</a>
         <h1 className="font-serif text-5xl">Criar círculo</h1>
         <CircleControls

@@ -3,7 +3,7 @@
 import { useEditorHistory } from "../lib/use-editor-history";
 import BlockList from "../components/block-list";
 import InlineEditor from "../components/inline-editor";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useId, useRef, useState } from "react";
 import {
   Bot,
   Feather,
@@ -54,9 +54,13 @@ export default function Editor({
   initialBlocks?: ContentBlock[];
   editSlug?: string;
 }) {
+  // A random UUID here differs between server render and hydration; useId is stable across both.
+  const firstBlockId = useId();
   const history = useEditorHistory({
     title: initialTitle,
-    blocks: initialBlocks?.length ? initialBlocks : [makeBlock("paragraph", { text: "" })],
+    blocks: initialBlocks?.length
+      ? initialBlocks
+      : [{ id: firstBlockId, type: "paragraph", text: "" }],
   });
   const { title, blocks } = history.history.present;
   const { setTitle, setBlocks } = history;
@@ -232,7 +236,7 @@ export default function Editor({
     <main className="min-h-screen bg-[#f5f1e8] text-[#1f241d]">
       <SiteNavigation active="escrever" signedIn complete avatarUrl={avatarUrl} />
       <div className="border-b border-[#d8d0c1] bg-[#f5f1e8]">
-        <div className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-between gap-3 px-5 py-3">
+        <div className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-8">
           <a
             href={editSlug ? `/p/${editSlug}` : "/mural"}
             onClick={() => {
@@ -286,7 +290,7 @@ export default function Editor({
               else undoChange();
             }
           }}
-          className="mx-auto max-w-[780px] px-5 pb-36 pt-8 sm:px-10 md:pt-12"
+          className="mx-auto max-w-[780px] px-4 pb-36 pt-8 sm:px-10 md:pt-12"
         >
           <div className="mb-6 flex flex-wrap items-center justify-between gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-[#667064]">
             <p>{editSlug ? "nova versão" : "nova publicação"}</p>
