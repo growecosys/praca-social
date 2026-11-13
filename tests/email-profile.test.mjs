@@ -107,7 +107,11 @@ test("profile edit validates input, reserves old handles, forbids conflicts and 
 test("email links: hash-only tokens, expiry, browser binding, account linking, single consumption and rate limiting", async () => {
   const { d, db } = await setup(),
     m = await load("lib/email-access.ts"),
-    env = { RESEND_API_KEY: "fake-test-key", AUTH_EMAIL_FROM: "test@example.test" };
+    env = {
+      RESEND_API_KEY: "fake-test-key",
+      AUTH_EMAIL_FROM: "test@example.test",
+      AUTH_EMAIL_ORIGIN: "https://praca.example.test",
+    };
   const messages = [];
   const send = async (url, init) => {
     assert.equal(url, "https://api.resend.com/emails");
@@ -131,6 +135,20 @@ test("email links: hash-only tokens, expiry, browser binding, account linking, s
     send,
   );
   assert.deepEqual(response, { sent: true });
+  assert.ok(messages.at(-1).text.includes("https://praca.example.test/acesso-email#token="));
+  await assert.rejects(
+    m.requestEmailAccess(
+      db,
+      { RESEND_API_KEY: "k", AUTH_EMAIL_FROM: "test@example.test" },
+      "sem-origem@example.test",
+      "link",
+      "a",
+      m.randomEmailToken(),
+      "2",
+      send,
+    ),
+    /Origem de e-mail não configurada/,
+  );
   const token = messages.at(-1).text.match(/token=([a-f0-9]{64})/)[1];
   assert.notEqual(d.prepare("SELECT token_hash FROM email_auth_tokens").get().token_hash, token);
   assert.equal(d.prepare("SELECT consumed_at FROM email_auth_tokens").get().consumed_at, null);
@@ -192,7 +210,11 @@ test("email links: hash-only tokens, expiry, browser binding, account linking, s
 test("email code stays browser-bound, shares one-use state with link and stops after five guesses", async () => {
   const { d, db } = await setup(),
     m = await load("lib/email-access.ts"),
-    env = { RESEND_API_KEY: "test", AUTH_EMAIL_FROM: "test@example.test" },
+    env = {
+      RESEND_API_KEY: "test",
+      AUTH_EMAIL_FROM: "test@example.test",
+      AUTH_EMAIL_ORIGIN: "https://praca.example.test",
+    },
     nonce = m.randomEmailToken();
   let message;
   const send = async (url, init) => {
@@ -224,7 +246,11 @@ test("email code stays browser-bound, shares one-use state with link and stops a
 test("legacy empty email account can be linked to the original account after proving both ownerships; active accounts cannot be transferred", async () => {
   const { d, db } = await setup(),
     m = await load("lib/email-access.ts"),
-    env = { RESEND_API_KEY: "fake", AUTH_EMAIL_FROM: "test@example.test" },
+    env = {
+      RESEND_API_KEY: "fake",
+      AUTH_EMAIL_FROM: "test@example.test",
+      AUTH_EMAIL_ORIGIN: "https://praca.example.test",
+    },
     nonce = m.randomEmailToken();
   let message;
   const send = async (url, init) => {

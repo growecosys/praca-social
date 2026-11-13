@@ -1,16 +1,26 @@
 // Imports a restored D1/SQLite export into the PostgreSQL schema created by `npm run db:migrate`.
 //
-//   sqlite3 praca.sqlite < praca-d1.sql
-//   node scripts/import-sqlite.mjs praca.sqlite            validate in a transaction, then roll back
-//   node scripts/import-sqlite.mjs praca.sqlite --apply    import and commit
+//   npx wrangler d1 export <database-name> --remote --output=praca-d1.sql
+//   node scripts/import-sqlite.mjs praca-d1.sql            validate in a transaction, then roll back
+//   node scripts/import-sqlite.mjs praca-d1.sql --apply    import and commit
+//
+// The input may be a D1 `.sql` export or an already restored SQLite file.
 //
 // IDs, UUIDs, hashes, salts, JSON payloads and timestamps are copied verbatim. Identity
 // sequences are advanced past the imported maximum. The target must be empty. Exits non-zero
 // when any table count differs. Never commit the export: it contains credential hashes.
+import { readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import pg from "pg";
 
 const quote = (name) => `"${name.replace(/"/g, '""')}"`;
+export function openExport(file) {
+  if (!/\.sql$/i.test(file)) return new DatabaseSync(file, { readOnly: true });
+  const sqlite = new DatabaseSync(":memory:");
+  sqlite.exec(readFileSync(file, "utf8"));
+  return sqlite;
+}
+
 const IGNORED = /^(sqlite_|_cf_|d1_migrations$|_migrations$)/;
 
 async function dependencyOrder(target) {
@@ -131,12 +141,13 @@ if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).
   const [file] = process.argv.slice(2).filter((arg) => !arg.startsWith("--"));
   const apply = process.argv.includes("--apply");
   const connectionString = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;
-  if (!file) throw new Error("Usage: node scripts/import-sqlite.mjs <restored.sqlite> [--apply]");
+  if (!file)
+    throw new Error("Usage: node scripts/import-sqlite.mjs <export.sql|restored.sqlite> [--apply]");
   if (!connectionString) throw new Error("DATABASE_URL is not set.");
 
   const client = new pg.Client({ connectionString });
   await client.connect();
-  const sqlite = new DatabaseSync(file, { readOnly: true });
+  const sqlite = openExport(file);
   try {
     await client.query("BEGIN");
     const result = await importSqlite({ sqlite, target: client, log: console.log });

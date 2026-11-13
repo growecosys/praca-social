@@ -1,4 +1,5 @@
 import { bucket, type Bucket } from "./blob-bucket";
+import { siteOrigin } from "./site-url";
 import { getDatabase, type Database } from "./sql";
 
 interface PracaEnv {
@@ -31,6 +32,6 @@ export const env: PracaEnv = {
     return process.env.AUTH_EMAIL_FROM;
   },
   get AUTH_EMAIL_ORIGIN() {
-    return process.env.AUTH_EMAIL_ORIGIN;
+    return siteOrigin();
   },
 };

@@ -8,6 +8,7 @@ import { posts, users } from "../../../db/schema";
 import { ArticleBlocks, parseBlocks } from "../../../lib/content";
 import { firstPostImage } from "../../../lib/post-media";
 import { getPracaUser } from "../../../lib/praca-auth";
+import { metadataBase } from "../../../lib/site-url";
 import Interactions from "./interactions";
 
 async function getPost(slug: string) {
@@ -26,7 +27,7 @@ export async function generateMetadata({
   const description = post.content.replace(/\s+/g, " ").slice(0, 155);
   const image = firstPostImage(post.contentJson) || "/og.png";
   return {
-    metadataBase: new URL("https://praca-fs.greenpillbr.chatgpt.site"),
+    metadataBase: metadataBase(),
     title: `${post.title} — Praça`,
     description,
     alternates: { canonical: `/p/${post.slug}` },

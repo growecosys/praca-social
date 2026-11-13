@@ -8,6 +8,7 @@ import NatureAccent from "../components/nature-accent";
 import SignalComposer from "../components/signal-composer";
 import PersonalGuide from "../components/personal-guide";
 import { getPracaUser } from "../lib/praca-auth";
+import { metadataBase } from "../lib/site-url";
 import "./globals.css";
 
 const sans = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
@@ -19,14 +20,8 @@ const serif = Newsreader({
   display: "swap",
 });
 
-const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL ??
-  (process.env.VERCEL_PROJECT_PRODUCTION_URL
-    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-    : "http://localhost:3000");
-
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
+  metadataBase: metadataBase(),
   applicationName: "Praça",
   manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, title: "Praça", statusBarStyle: "default" },

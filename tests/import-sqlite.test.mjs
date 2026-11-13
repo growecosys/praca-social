@@ -91,3 +91,36 @@ test("a restored D1 export imports with IDs, big integers and sequences intact",
   sqlite.close();
   await target.close();
 });
+
+test("a D1 .sql export can be opened directly, including its PRAGMA and sqlite_sequence rows", async () => {
+  const { mkdtemp, writeFile, rm } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { openExport } = await import("../scripts/import-sqlite.mjs");
+  const dir = await mkdtemp(join(tmpdir(), "d1-export-"));
+  try {
+    const file = join(dir, "praca-d1.sql");
+    await writeFile(
+      file,
+      [
+        "PRAGMA defer_foreign_keys=TRUE;",
+        "CREATE TABLE IF NOT EXISTS _cf_KV (key TEXT PRIMARY KEY, value BLOB);",
+        "CREATE TABLE posts (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL);",
+        "INSERT INTO posts VALUES(1,'Olá, Praça');",
+        "DELETE FROM sqlite_sequence;",
+        "INSERT INTO sqlite_sequence VALUES('posts',1);",
+      ].join("\n"),
+    );
+    const sqlite = openExport(file);
+    assert.deepEqual(
+      sqlite
+        .prepare("SELECT id, title FROM posts")
+        .all()
+        .map((r) => ({ ...r })),
+      [{ id: 1, title: "Olá, Praça" }],
+    );
+    sqlite.close();
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

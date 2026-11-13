@@ -53,7 +53,8 @@ export function emailReady(env: any) {
   return Boolean(env.RESEND_API_KEY && env.AUTH_EMAIL_FROM);
 }
 export function emailOrigin(env: any) {
-  const url = new URL(env.AUTH_EMAIL_ORIGIN || "https://praca-fs.greenpillbr.chatgpt.site");
+  if (!env.AUTH_EMAIL_ORIGIN) throw Error("Origem de e-mail não configurada.");
+  const url = new URL(env.AUTH_EMAIL_ORIGIN);
   if (url.protocol !== "https:") throw Error("Origem de e-mail inválida.");
   return url.origin;
 }

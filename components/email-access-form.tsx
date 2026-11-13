@@ -4,23 +4,26 @@ export default function EmailAccessForm({
   purpose = "login",
   currentEmail,
   pendingEmail,
+  emailAvailable,
 }: {
   purpose?: "login" | "link";
   currentEmail?: string | null;
   pendingEmail?: string | null;
+  emailAvailable?: boolean;
 }) {
   const [code, setCode] = useState(""),
     [email, setEmail] = useState(pendingEmail || ""),
-    [available, setAvailable] = useState<boolean | null>(null),
+    [available, setAvailable] = useState<boolean | null>(emailAvailable ?? null),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState(""),
     [error, setError] = useState("");
   useEffect(() => {
+    if (emailAvailable !== undefined) return;
     fetch("/api/auth/email", { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => setAvailable(Boolean(d.available)))
       .catch(() => setAvailable(false));
-  }, []);
+  }, [emailAvailable]);
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (busy) return;
@@ -98,7 +101,9 @@ export default function EmailAccessForm({
       )}
       {available === false ? (
         <p role="status" className="text-sm text-[#667064]">
-          O acesso por e-mail está indisponível no momento. Entre com usuário e senha.
+          {purpose === "link"
+            ? "O envio de e-mails ainda não está ativo. Sua conta já funciona com usuário e senha."
+            : "O acesso por e-mail está indisponível no momento. Entre com usuário e senha."}
         </p>
       ) : (
         <form onSubmit={submit} className="space-y-3">
