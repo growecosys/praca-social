@@ -35,9 +35,7 @@ export function RoleHistory({
 }) {
   const current =
     versions.find(
-      (version) =>
-        version.roleTitle === currentRole &&
-        version.manifesto === currentManifesto,
+      (version) => version.roleTitle === currentRole && version.manifesto === currentManifesto,
     ) || versions[0];
   const [selectedId, setSelectedId] = useState(current?.id || "");
   const [busy, setBusy] = useState(false);
@@ -47,17 +45,13 @@ export function RoleHistory({
     [versions, selectedId],
   );
   const selectedPartial = useMemo(
-    () =>
-      partialRecords.find(
-        (record) => `legacy:${record.roleTitle}` === selectedId,
-      ),
+    () => partialRecords.find((record) => `legacy:${record.roleTitle}` === selectedId),
     [partialRecords, selectedId],
   );
   async function apply() {
     if (
       !selected ||
-      (selected.roleTitle === currentRole &&
-        selected.manifesto === currentManifesto)
+      (selected.roleTitle === currentRole && selected.manifesto === currentManifesto)
     )
       return;
     setBusy(true);
@@ -69,15 +63,10 @@ export function RoleHistory({
         body: JSON.stringify({ generationId: selected.id, action: "select" }),
       });
       const data = await response.json();
-      if (!response.ok)
-        throw new Error(data.error || "Não foi possível trocar o papel.");
+      if (!response.ok) throw new Error(data.error || "Não foi possível trocar o papel.");
       window.location.reload();
     } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "Não foi possível trocar o papel.",
-      );
+      setError(caught instanceof Error ? caught.message : "Não foi possível trocar o papel.");
       setBusy(false);
     }
   }
@@ -95,23 +84,16 @@ export function RoleHistory({
         }),
       });
       const data = await response.json();
-      if (!response.ok)
-        throw new Error(data.error || "Não foi possível reconstruir o papel.");
+      if (!response.ok) throw new Error(data.error || "Não foi possível reconstruir o papel.");
       window.location.reload();
     } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "Não foi possível reconstruir o papel.",
-      );
+      setError(caught instanceof Error ? caught.message : "Não foi possível reconstruir o papel.");
       setBusy(false);
     }
   }
   if (!versions.length) return null;
   const alreadyActive = Boolean(
-    selected &&
-    selected.roleTitle === currentRole &&
-    selected.manifesto === currentManifesto,
+    selected && selected.roleTitle === currentRole && selected.manifesto === currentManifesto,
   );
   return (
     <section className="mt-5 border-t border-[#d8d0c1] pt-4">
@@ -131,10 +113,7 @@ export function RoleHistory({
             </option>
           ))}
           {partialRecords.map((record) => (
-            <option
-              key={`legacy:${record.roleTitle}`}
-              value={`legacy:${record.roleTitle}`}
-            >
+            <option key={`legacy:${record.roleTitle}`} value={`legacy:${record.roleTitle}`}>
               {record.roleTitle} · registro recuperado
             </option>
           ))}
@@ -142,12 +121,8 @@ export function RoleHistory({
       </label>
       {selected && (
         <div className="mt-3 border bg-[#fbf8f1] p-3">
-          <strong className="font-serif text-lg text-[#244e35]">
-            {selected.roleTitle}
-          </strong>
-          <p className="mt-1 text-xs leading-5 text-[#667064]">
-            {selected.manifesto}
-          </p>
+          <strong className="font-serif text-lg text-[#244e35]">{selected.roleTitle}</strong>
+          <p className="mt-1 text-xs leading-5 text-[#667064]">{selected.manifesto}</p>
           {Object.keys(selected.mapping).length > 0 && (
             <details className="mt-3 border-t pt-3">
               <summary className="cursor-pointer text-xs font-semibold">
@@ -156,17 +131,13 @@ export function RoleHistory({
               <dl className="mt-2 space-y-1 text-xs text-[#667064]">
                 {Object.entries(selected.mapping).map(([key, value]) => (
                   <div key={key}>
-                    <dt className="inline font-semibold capitalize text-[#1f241d]">
-                      {key}:{" "}
-                    </dt>
+                    <dt className="inline font-semibold capitalize text-[#1f241d]">{key}: </dt>
                     <dd className="inline">{value}</dd>
                   </div>
                 ))}
               </dl>
               {selected.explanation && (
-                <p className="mt-2 text-[11px] leading-5 text-[#667064]">
-                  {selected.explanation}
-                </p>
+                <p className="mt-2 text-[11px] leading-5 text-[#667064]">{selected.explanation}</p>
               )}
             </details>
           )}
@@ -174,13 +145,11 @@ export function RoleHistory({
       )}
       {selectedPartial && (
         <div className="mt-3 border border-dashed border-[#b7ae9f] bg-[#fbf8f1] p-3">
-          <strong className="font-serif text-lg text-[#244e35]">
-            {selectedPartial.roleTitle}
-          </strong>
+          <strong className="font-serif text-lg text-[#244e35]">{selectedPartial.roleTitle}</strong>
           <p className="mt-1 text-xs leading-5 text-[#667064]">
-            O título original foi recuperado. O sistema antigo não preservou
-            manifesto, símbolo e cores; esses elementos serão reconstruídos a
-            partir das cinco respostas e identificados na auditoria.
+            O título original foi recuperado. O sistema antigo não preservou manifesto, símbolo e
+            cores; esses elementos serão reconstruídos a partir das cinco respostas e identificados
+            na auditoria.
           </p>
         </div>
       )}
@@ -208,20 +177,12 @@ export function RoleHistory({
           {error}
         </p>
       )}
-      <p className="mt-2 text-[11px] text-[#667064]">
-        Trocar de versão não utiliza créditos.
-      </p>
+      <p className="mt-2 text-[11px] text-[#667064]">Trocar de versão não utiliza créditos.</p>
     </section>
   );
 }
 
-export function AvatarGallery({
-  userId,
-  versions,
-}: {
-  userId: string;
-  versions: AvatarVersion[];
-}) {
+export function AvatarGallery({ userId, versions }: { userId: string; versions: AvatarVersion[] }) {
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   async function apply(id: string) {
@@ -234,15 +195,10 @@ export function AvatarGallery({
         body: JSON.stringify({ generationId: id }),
       });
       const data = await response.json();
-      if (!response.ok)
-        throw new Error(data.error || "Não foi possível trocar o avatar.");
+      if (!response.ok) throw new Error(data.error || "Não foi possível trocar o avatar.");
       window.location.reload();
     } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "Não foi possível trocar o avatar.",
-      );
+      setError(caught instanceof Error ? caught.message : "Não foi possível trocar o avatar.");
       setBusy("");
     }
   }
@@ -260,11 +216,7 @@ export function AvatarGallery({
             type="button"
             onClick={() => !version.active && apply(version.id)}
             disabled={Boolean(busy) || version.active}
-            title={
-              version.active
-                ? "Avatar em uso"
-                : `Gerado em ${date(version.createdAt)}`
-            }
+            title={version.active ? "Avatar em uso" : `Gerado em ${date(version.createdAt)}`}
             className={`relative aspect-square overflow-hidden border-2 ${version.active ? "border-[#244e35] shadow-[3px_3px_0_#f0c64b]" : "border-transparent hover:border-[#244e35]"}`}
           >
             <img

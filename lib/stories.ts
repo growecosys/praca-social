@@ -1,68 +1,552 @@
-export const DAY=86400000;
-export const STORY_SKILLS={investigar:'Investigar',inventar:'Inventar',articular:'Articular',cuidar:'Cuidar',explorar:'Explorar'} as const;
-export type StorySkill=keyof typeof STORY_SKILLS;
-export const STORY_KEYS=Object.keys(STORY_SKILLS) as StorySkill[];
-export class StoryError extends Error{constructor(message:string,public status=400){super(message)}}
-export type Member={id:string;name:string;role:string;avatar:string|null;talent:StorySkill;joined:number;misses:number;absent:boolean;left:boolean;acted:number[];practice:Partial<Record<StorySkill,number>>;activities:string[];reflections:Array<{skill:StorySkill;mode:string;note:string}>;boon:StorySkill|null;focus:boolean;pending:null|{id:string;action:string;intent:string;text:string;round:number}};
-export type StoryEvent={id:string;at:number;round:number;actor:string|null;kind:string;text:string};
-export type Proposal={id:string;key:string;author:string;round:number;yes:string[];no:string[];status:'open'|'approved'|'expired';};
-export type Campaign={id:string;phase:'enrollment'|'playing'|'ended'|'unformed';created:number;enrollEnd:number;start:number;end:number;round:number;roundEnd:number;closed:number|null;members:Member[];waiting:Member[];materials:number;funds:number;diagnosed:boolean;repair:number;water:number;layout:number;setups:string[];proposals:Proposal[];events:StoryEvent[];quiet:number;ending:string;outcome:'success'|'partial'|'failed'|'interrupted'|null;};
-export const PREMISE='Vocês vão realizar uma feira na Praça dentro de uma semana. Ao preparar o espaço, descobrem que as torneiras estão sem água. O grupo tem quatro unidades de material e seis fichas de orçamento fictício. É preciso descobrir o problema e decidir como realizar a feira. Consertar o abastecimento, conseguir água em recipientes ou mudar o local são caminhos possíveis.';
-export type StoryAction={id:string;label:string;skill:StorySkill;effect:string;risk:string};
-export const STORY_ACTIONS:StoryAction[]=[
-{id:'inspect',label:'Examinar a instalação',skill:'investigar',effect:'Identificar a causa da falta de água.',risk:'O diagnóstico vem com um contratempo; será necessário mais trabalho no reparo.'},
-{id:'repair',label:'Reparar a conexão quebrada',skill:'inventar',effect:'Avançar o reparo: 1, 2 ou 3 etapas, conforme os dados.',risk:'Um resultado baixo ainda avança uma etapa. O material já aprovado não será cobrado de novo.'},
-{id:'supply',label:'Procurar recipientes e pontos de abastecimento',skill:'explorar',effect:'Preparar 1, 2 ou 3 unidades de água para a feira.',risk:'Uma tentativa difícil encontra menos capacidade de abastecimento.'},
-{id:'layout',label:'Organizar os espaços e tarefas da feira',skill:'articular',effect:'Preparar 1, 2 ou 3 etapas da organização.',risk:'Um contratempo reduz o avanço; o trabalho já feito permanece.'},
-{id:'review',label:'Revisar o que foi preparado e registrar pendências',skill:'investigar',effect:'Registrar sua revisão e participação no encerramento da feira.',risk:'A revisão pode deixar dúvidas registradas; não desfaz o trabalho do grupo.'},
-{id:'access',label:'Preparar acesso, descanso e higiene',skill:'cuidar',effect:'Avançar 1, 2 ou 3 etapas da organização com foco no acesso.',risk:'Um contratempo exige adaptações e produz menos avanço.'},
+export const DAY = 86400000;
+export const STORY_SKILLS = {
+  investigar: "Investigar",
+  inventar: "Inventar",
+  articular: "Articular",
+  cuidar: "Cuidar",
+  explorar: "Explorar",
+} as const;
+export type StorySkill = keyof typeof STORY_SKILLS;
+export const STORY_KEYS = Object.keys(STORY_SKILLS) as StorySkill[];
+export class StoryError extends Error {
+  constructor(
+    message: string,
+    public status = 400,
+  ) {
+    super(message);
+  }
+}
+export type Member = {
+  id: string;
+  name: string;
+  role: string;
+  avatar: string | null;
+  talent: StorySkill;
+  joined: number;
+  misses: number;
+  absent: boolean;
+  left: boolean;
+  acted: number[];
+  practice: Partial<Record<StorySkill, number>>;
+  activities: string[];
+  reflections: Array<{ skill: StorySkill; mode: string; note: string }>;
+  boon: StorySkill | null;
+  focus: boolean;
+  pending: null | { id: string; action: string; intent: string; text: string; round: number };
+};
+export type StoryEvent = {
+  id: string;
+  at: number;
+  round: number;
+  actor: string | null;
+  kind: string;
+  text: string;
+};
+export type Proposal = {
+  id: string;
+  key: string;
+  author: string;
+  round: number;
+  yes: string[];
+  no: string[];
+  status: "open" | "approved" | "expired";
+};
+export type Campaign = {
+  id: string;
+  phase: "enrollment" | "playing" | "ended" | "unformed";
+  created: number;
+  enrollEnd: number;
+  start: number;
+  end: number;
+  round: number;
+  roundEnd: number;
+  closed: number | null;
+  members: Member[];
+  waiting: Member[];
+  materials: number;
+  funds: number;
+  diagnosed: boolean;
+  repair: number;
+  water: number;
+  layout: number;
+  setups: string[];
+  proposals: Proposal[];
+  events: StoryEvent[];
+  quiet: number;
+  ending: string;
+  outcome: "success" | "partial" | "failed" | "interrupted" | null;
+};
+export const PREMISE =
+  "Vocês vão realizar uma feira na Praça dentro de uma semana. Ao preparar o espaço, descobrem que as torneiras estão sem água. O grupo tem quatro unidades de material e seis fichas de orçamento fictício. É preciso descobrir o problema e decidir como realizar a feira. Consertar o abastecimento, conseguir água em recipientes ou mudar o local são caminhos possíveis.";
+export type StoryAction = {
+  id: string;
+  label: string;
+  skill: StorySkill;
+  effect: string;
+  risk: string;
+};
+export const STORY_ACTIONS: StoryAction[] = [
+  {
+    id: "inspect",
+    label: "Examinar a instalação",
+    skill: "investigar",
+    effect: "Identificar a causa da falta de água.",
+    risk: "O diagnóstico vem com um contratempo; será necessário mais trabalho no reparo.",
+  },
+  {
+    id: "repair",
+    label: "Reparar a conexão quebrada",
+    skill: "inventar",
+    effect: "Avançar o reparo: 1, 2 ou 3 etapas, conforme os dados.",
+    risk: "Um resultado baixo ainda avança uma etapa. O material já aprovado não será cobrado de novo.",
+  },
+  {
+    id: "supply",
+    label: "Procurar recipientes e pontos de abastecimento",
+    skill: "explorar",
+    effect: "Preparar 1, 2 ou 3 unidades de água para a feira.",
+    risk: "Uma tentativa difícil encontra menos capacidade de abastecimento.",
+  },
+  {
+    id: "layout",
+    label: "Organizar os espaços e tarefas da feira",
+    skill: "articular",
+    effect: "Preparar 1, 2 ou 3 etapas da organização.",
+    risk: "Um contratempo reduz o avanço; o trabalho já feito permanece.",
+  },
+  {
+    id: "review",
+    label: "Revisar o que foi preparado e registrar pendências",
+    skill: "investigar",
+    effect: "Registrar sua revisão e participação no encerramento da feira.",
+    risk: "A revisão pode deixar dúvidas registradas; não desfaz o trabalho do grupo.",
+  },
+  {
+    id: "access",
+    label: "Preparar acesso, descanso e higiene",
+    skill: "cuidar",
+    effect: "Avançar 1, 2 ou 3 etapas da organização com foco no acesso.",
+    risk: "Um contratempo exige adaptações e produz menos avanço.",
+  },
 ];
-export const STORY_PLANS=[
-{key:'repair',label:'Reservar material para o reparo',cost:0,materials:2,description:'Reservar duas unidades de material. Depois alguém precisa trabalhar no reparo.'},
-{key:'containers',label:'Conseguir recipientes emprestados',cost:2,materials:0,description:'Usar duas fichas de orçamento fictício para transporte. Acrescenta duas unidades de água.'},
-{key:'move',label:'Transferir a feira para o pátio ao lado',cost:3,materials:0,description:'Usar três fichas. O pátio tem água; ainda é preciso organizar a feira.'},
+export const STORY_PLANS = [
+  {
+    key: "repair",
+    label: "Reservar material para o reparo",
+    cost: 0,
+    materials: 2,
+    description: "Reservar duas unidades de material. Depois alguém precisa trabalhar no reparo.",
+  },
+  {
+    key: "containers",
+    label: "Conseguir recipientes emprestados",
+    cost: 2,
+    materials: 0,
+    description:
+      "Usar duas fichas de orçamento fictício para transporte. Acrescenta duas unidades de água.",
+  },
+  {
+    key: "move",
+    label: "Transferir a feira para o pátio ao lado",
+    cost: 3,
+    materials: 0,
+    description: "Usar três fichas. O pátio tem água; ainda é preciso organizar a feira.",
+  },
 ];
-function event(s:Campaign,now:number,kind:string,text:string,actor:string|null=null){s.events.push({id:crypto.randomUUID(),at:now,round:s.round,actor,kind,text});}
-export function newCampaign(now=Date.now(),id=crypto.randomUUID()):Campaign{return {id,phase:'enrollment',created:now,enrollEnd:now+3*DAY,start:0,end:0,round:0,roundEnd:0,closed:null,members:[],waiting:[],materials:4,funds:6,diagnosed:false,repair:0,water:0,layout:0,setups:[],proposals:[],events:[],quiet:0,ending:'',outcome:null};}
-export function activeMembers(s:Campaign){return s.members.filter(m=>!m.left&&!m.absent);}
-export function member(s:Campaign,id:string){const m=s.members.find(m=>m.id===id&&!m.left);if(!m)throw new StoryError('Você não participa desta campanha.',403);return m;}
-export function availableStoryActions(s:Campaign){if(s.phase!=='playing')return [];return STORY_ACTIONS.filter(a=>ready(s)?a.id==='review':a.id==='review'?false:a.id==='inspect'?!s.diagnosed:a.id==='repair'?s.diagnosed&&s.setups.includes('repair')&&s.repair<4:a.id==='supply'?s.water<4:a.id==='layout'||a.id==='access'?s.layout<4:true);}
-export function storyBonus(m:Member,a:StoryAction,focus=false){return (m.talent===a.skill?2:0)+Math.min(1,Math.floor((m.practice[a.skill]||0)/2))+(m.boon===a.skill?1:0)+(focus&&m.focus&&m.talent===a.skill?1:0);}
-function complete(s:Campaign,now:number,reason:string){s.phase='ended';s.closed=now;const supplied=s.repair>=4||s.water>=4||s.setups.includes('move');s.outcome=reason==='quiet'||reason==='empty'?'interrupted':supplied&&s.layout>=4?'success':supplied||s.layout>=4?'partial':'failed';s.ending=reason==='empty'?'A campanha foi interrompida porque todos os participantes saíram.':reason==='quiet'?'A campanha foi interrompida depois de duas rodadas sem ações. O histórico e as contribuições foram preservados.':supplied&&s.layout>=4?(s.setups.includes('move')?'A feira foi transferida para o pátio e ficou pronta para receber o público.':s.repair>=4?'O abastecimento foi reparado e a feira ficou pronta para receber o público.':'O grupo preparou água em recipientes e organizou a feira. O abastecimento permanente ainda precisa de reparo.'):supplied?'O grupo resolveu o abastecimento, mas não terminou a organização. A feira precisará ser menor ou adiada.':s.layout>=4?'O espaço ficou organizado, mas faltou resolver o abastecimento. A feira precisará ser adiada.':'O grupo não conseguiu preparar a feira dentro do prazo. As descobertas e os trabalhos realizados ficam registrados para uma próxima tentativa.';for(const m of s.members)m.pending=null;for(const p of s.proposals)if(p.status==='open')p.status='expired';event(s,now,'ending',s.ending);}
-export function ready(s:Campaign){return s.layout>=4&&(s.repair>=4||s.water>=4||s.setups.includes('move'));}
-export function maybeComplete(s:Campaign,now:number){if(s.phase==='playing'&&ready(s))complete(s,now,'success');}
-function settlePlans(s:Campaign,now:number){const active=activeMembers(s);for(const p of s.proposals.filter(p=>p.status==='open'&&p.round===s.round)){
- const yes=p.yes.filter(id=>active.some(m=>m.id===id)).length;
- if(yes<=active.length/2||active.length===0)continue;const plan=STORY_PLANS.find(x=>x.key===p.key)!;
- if(s.setups.includes(p.key)||s.funds<plan.cost||s.materials<plan.materials||(p.key==='repair'&&!s.diagnosed)){p.status='expired';event(s,now,'proposal','Uma proposta perdeu validade porque o cenário ou os recursos mudaram.');continue;}
- s.funds-=plan.cost;s.materials-=plan.materials;s.setups.push(p.key);p.status='approved';if(p.key==='containers')s.water=Math.min(4,s.water+2);event(s,now,'proposal',`Aprovado: ${plan.label}. ${plan.cost} fichas e ${plan.materials} unidades de material utilizadas.`);
- }}
-export function advanceCampaign(input:Campaign,now:number):Campaign{const s=structuredClone(input);
- if(s.phase==='enrollment'&&now>=s.enrollEnd){if(s.members.filter(m=>!m.left).length<3){s.phase='unformed';s.closed=s.enrollEnd;s.ending='A turma não reuniu três participantes. Não houve perda de pontos ou recursos.';event(s,s.enrollEnd,'ending',s.ending);return s;}s.phase='playing';s.start=s.enrollEnd;s.end=s.start+7*DAY;s.round=1;s.roundEnd=s.start+DAY;event(s,s.start,'start',PREMISE);event(s,s.start,'round','Rodada 1 aberta. Cada pessoa pode confirmar uma ação principal.');}
- if(s.phase==='playing'&&s.members.every(m=>m.left)){complete(s,now,'empty');return s;}
- while(s.phase==='playing'&&now>=s.roundEnd){const endingAt=s.roundEnd;if(ready(s)){complete(s,endingAt,'success');break;}const submitted=s.members.some(m=>m.acted.includes(s.round));s.quiet=submitted?0:s.quiet+1;for(const m of s.members.filter(m=>!m.left)){m.misses=m.acted.includes(s.round)?0:m.misses+1;m.absent=m.misses>=2;m.pending=null;}
- for(const p of s.proposals)if(p.status==='open')p.status='expired';
- if(s.quiet>=2||s.round>=7||s.members.every(m=>m.left)){complete(s,endingAt,s.quiet>=2?'quiet':'deadline');break;}
- s.round++;s.roundEnd=s.start+s.round*DAY;event(s,endingAt,'round',`Rodada ${s.round} aberta. ${activeMembers(s).length} participantes ativos. Ausentes podem retornar; ninguém age em seu nome.`);
- }return s;}
-export function mutateCampaign(input:Campaign,user:{id:string;name:string;role:string;avatar:string|null},p:any,now:number,dice?:number[]):Campaign{const s=advanceCampaign(input,now);const id=user.id;
- if(p.op==='join'){if(s.phase!=='enrollment')throw new StoryError('As inscrições desta turma já terminaram.',409);if(!STORY_KEYS.includes(p.talent)||p.accept!==true)throw new StoryError('Escolha um talento e confirme as regras.');if(s.members.some(m=>m.id===id)||s.waiting.some(m=>m.id===id))throw new StoryError('Você já está inscrito.',409);if(s.waiting.length>=24)throw new StoryError('A lista de espera está cheia. Acompanhe a próxima turma.');const m:Member={id,name:user.name.slice(0,60),role:user.role.slice(0,100)||'Habitante da Praça',avatar:user.avatar,talent:p.talent,joined:now,misses:0,absent:false,left:false,acted:[],practice:{},activities:[],reflections:[],boon:null,focus:true,pending:null};(s.members.length<6?s.members:s.waiting).push(m);return s;}
- if(p.op==='leave'){if(s.phase==='enrollment'){s.members=s.members.filter(m=>m.id!==id);s.waiting=s.waiting.filter(m=>m.id!==id);if(s.members.length<6&&s.waiting.length)s.members.push(s.waiting.shift()!);return s;}const m=member(s,id);if(s.phase!=='playing')throw new StoryError('A campanha terminou.');m.left=true;m.pending=null;for(const proposal of s.proposals){proposal.yes=proposal.yes.filter(x=>x!==id);proposal.no=proposal.no.filter(x=>x!==id);}event(s,now,'departure',`${m.name} saiu da campanha.`,id);if(s.members.every(m=>m.left))complete(s,now,'empty');return s;}
- if(s.phase!=='playing')throw new StoryError('A campanha não está em andamento.',409);const m=member(s,id);
- if(p.op==='return'){if(!m.absent)throw new StoryError('Você já está ativo nesta rodada.');m.absent=false;m.misses=0;event(s,now,'return',`${m.name} retornou à campanha.`,id);return s;}
- if(m.absent)throw new StoryError('Confirme seu retorno antes de participar.',409);
- if(p.op==='plan'){if(ready(s))throw new StoryError('O objetivo foi alcançado. O encerramento será no fim da rodada.');if(s.proposals.some(x=>x.author===id&&x.round===s.round))throw new StoryError('Você já apresentou uma proposta nesta rodada.');const plan=STORY_PLANS.find(x=>x.key===p.key);if(!plan||s.setups.includes(plan.key)||s.proposals.some(x=>x.key===plan.key&&x.status==='open'))throw new StoryError('Proposta indisponível.');if(s.funds<plan.cost||s.materials<plan.materials||(plan.key==='repair'&&!s.diagnosed))throw new StoryError('Faltam recursos ou um diagnóstico para essa proposta.');s.proposals.push({id:crypto.randomUUID(),key:plan.key,author:id,round:s.round,yes:[id],no:[],status:'open'});event(s,now,'proposal',`${m.name} propôs: ${plan.label}.`,id);settlePlans(s,now);return s;}
- if(p.op==='vote'){if(ready(s))throw new StoryError('O objetivo foi alcançado. Não são necessários novos gastos.');const proposal=s.proposals.find(x=>x.id===p.id&&x.round===s.round&&x.status==='open');if(!proposal||typeof p.yes!=='boolean')throw new StoryError('Esta proposta não está aberta.',409);proposal.yes=proposal.yes.filter(x=>x!==id);proposal.no=proposal.no.filter(x=>x!==id);(p.yes?proposal.yes:proposal.no).push(id);settlePlans(s,now);return s;}
- if(p.op==='activity'){if(m.activities.length>=2)throw new StoryError('Você já registrou as duas preparações desta campanha.');if(m.boon)throw new StoryError('Use ou dispense sua preparação atual.');if(!STORY_KEYS.includes(p.skill)||m.activities.includes(p.skill)||!['fiction','real'].includes(p.mode)||typeof p.note!=='string'||p.note.trim().length<80||p.note.length>1600)throw new StoryError('Escolha uma habilidade nova e registre de 80 a 1.600 caracteres.');m.activities.push(p.skill);(m.reflections ||= []).push({skill:p.skill,mode:p.mode,note:p.note.trim()});m.boon=p.skill;m.practice[p.skill as StorySkill]=(m.practice[p.skill as StorySkill]||0)+1;return s;}
- if(p.op==='discard'){m.boon=null;return s;}
- if(p.op==='cancel'){m.pending=null;return s;}
- if(m.acted.includes(s.round))throw new StoryError('Sua ação principal desta rodada já foi realizada.',409);
- if(p.op==='prepare'){if(m.pending)throw new StoryError('Confirme ou cancele sua ação atual.');const a=availableStoryActions(s).find(a=>a.id===p.action);if(!a)throw new StoryError('Essa ação deixou de estar disponível.',409);m.pending={id:crypto.randomUUID(),action:a.id,intent:typeof p.intent==='string'?p.intent.slice(0,900):a.label,text:typeof p.text==='string'?p.text.slice(0,1200):'Confira o efeito e o risco antes de confirmar.',round:s.round};return s;}
- if(p.op==='roll'){const pending=m.pending,a=availableStoryActions(s).find(a=>a.id===pending?.action);if(!pending||pending.id!==p.id||pending.round!==s.round||!a)throw new StoryError('A situação mudou. Cancele a ação e escolha outra.',409);if(!dice||dice.length!==2||dice.some(d=>!Number.isInteger(d)||d<1||d>6))throw new StoryError('Dados inválidos.');const focus=p.focus===true;if(focus&&(!m.focus||m.talent!==a.skill))throw new StoryError('Talento indisponível.');const b=storyBonus(m,a,focus),total=dice[0]+dice[1]+b,steps=total>=10?3:total>=7?2:1;if(focus)m.focus=false;if(m.boon===a.skill)m.boon=null;m.pending=null;m.acted.push(s.round);m.practice[a.skill]=(m.practice[a.skill]||0)+1;let result='';
- if(a.id==='review')result='Você revisou o que ficou pronto e registrou as pendências. O grupo conclui a história no fechamento desta rodada.';
- if(a.id==='inspect'){s.diagnosed=true;s.repair=total<7?-2:total<10?-1:s.repair;result='Uma conexão quebrada entre a caixa e as torneiras explica a falta de água. O grupo pode reservar material e trabalhar no reparo, ou buscar outra forma de abastecimento.';if(s.repair<0)result+=` O contratempo deixou ${-s.repair} etapa(s) extra(s) de ajuste antes do reparo principal.`;}
- if(a.id==='repair'){s.repair=Math.min(4,s.repair+steps);result=`O reparo avançou ${steps} etapa(s). ${Math.max(0,s.repair)}/4 concluídas.`;}
- if(a.id==='supply'){s.water=Math.min(4,s.water+steps);result=`Foram preparados recipientes e pontos de abastecimento: ${s.water}/4 unidades de água.`;}
- if(a.id==='layout'||a.id==='access'){s.layout=Math.min(4,s.layout+steps);result=`A organização avançou ${steps} etapa(s): ${s.layout}/4 concluídas.`;}
- event(s,now,'action',`${m.name}: ${pending.intent}\n${STORY_SKILLS[a.skill]}: ${dice.join(' + ')} + ${b} = ${total}. ${total>=10?'Sucesso':total>=7?'Sucesso com custo':'Complicação'}.\n${result}`,id);return s;}
- throw new StoryError('Operação inválida.');}
+function event(s: Campaign, now: number, kind: string, text: string, actor: string | null = null) {
+  s.events.push({ id: crypto.randomUUID(), at: now, round: s.round, actor, kind, text });
+}
+export function newCampaign(now = Date.now(), id = crypto.randomUUID()): Campaign {
+  return {
+    id,
+    phase: "enrollment",
+    created: now,
+    enrollEnd: now + 3 * DAY,
+    start: 0,
+    end: 0,
+    round: 0,
+    roundEnd: 0,
+    closed: null,
+    members: [],
+    waiting: [],
+    materials: 4,
+    funds: 6,
+    diagnosed: false,
+    repair: 0,
+    water: 0,
+    layout: 0,
+    setups: [],
+    proposals: [],
+    events: [],
+    quiet: 0,
+    ending: "",
+    outcome: null,
+  };
+}
+export function activeMembers(s: Campaign) {
+  return s.members.filter((m) => !m.left && !m.absent);
+}
+export function member(s: Campaign, id: string) {
+  const m = s.members.find((m) => m.id === id && !m.left);
+  if (!m) throw new StoryError("Você não participa desta campanha.", 403);
+  return m;
+}
+export function availableStoryActions(s: Campaign) {
+  if (s.phase !== "playing") return [];
+  return STORY_ACTIONS.filter((a) =>
+    ready(s)
+      ? a.id === "review"
+      : a.id === "review"
+        ? false
+        : a.id === "inspect"
+          ? !s.diagnosed
+          : a.id === "repair"
+            ? s.diagnosed && s.setups.includes("repair") && s.repair < 4
+            : a.id === "supply"
+              ? s.water < 4
+              : a.id === "layout" || a.id === "access"
+                ? s.layout < 4
+                : true,
+  );
+}
+export function storyBonus(m: Member, a: StoryAction, focus = false) {
+  return (
+    (m.talent === a.skill ? 2 : 0) +
+    Math.min(1, Math.floor((m.practice[a.skill] || 0) / 2)) +
+    (m.boon === a.skill ? 1 : 0) +
+    (focus && m.focus && m.talent === a.skill ? 1 : 0)
+  );
+}
+function complete(s: Campaign, now: number, reason: string) {
+  s.phase = "ended";
+  s.closed = now;
+  const supplied = s.repair >= 4 || s.water >= 4 || s.setups.includes("move");
+  s.outcome =
+    reason === "quiet" || reason === "empty"
+      ? "interrupted"
+      : supplied && s.layout >= 4
+        ? "success"
+        : supplied || s.layout >= 4
+          ? "partial"
+          : "failed";
+  s.ending =
+    reason === "empty"
+      ? "A campanha foi interrompida porque todos os participantes saíram."
+      : reason === "quiet"
+        ? "A campanha foi interrompida depois de duas rodadas sem ações. O histórico e as contribuições foram preservados."
+        : supplied && s.layout >= 4
+          ? s.setups.includes("move")
+            ? "A feira foi transferida para o pátio e ficou pronta para receber o público."
+            : s.repair >= 4
+              ? "O abastecimento foi reparado e a feira ficou pronta para receber o público."
+              : "O grupo preparou água em recipientes e organizou a feira. O abastecimento permanente ainda precisa de reparo."
+          : supplied
+            ? "O grupo resolveu o abastecimento, mas não terminou a organização. A feira precisará ser menor ou adiada."
+            : s.layout >= 4
+              ? "O espaço ficou organizado, mas faltou resolver o abastecimento. A feira precisará ser adiada."
+              : "O grupo não conseguiu preparar a feira dentro do prazo. As descobertas e os trabalhos realizados ficam registrados para uma próxima tentativa.";
+  for (const m of s.members) m.pending = null;
+  for (const p of s.proposals) if (p.status === "open") p.status = "expired";
+  event(s, now, "ending", s.ending);
+}
+export function ready(s: Campaign) {
+  return s.layout >= 4 && (s.repair >= 4 || s.water >= 4 || s.setups.includes("move"));
+}
+export function maybeComplete(s: Campaign, now: number) {
+  if (s.phase === "playing" && ready(s)) complete(s, now, "success");
+}
+function settlePlans(s: Campaign, now: number) {
+  const active = activeMembers(s);
+  for (const p of s.proposals.filter((p) => p.status === "open" && p.round === s.round)) {
+    const yes = p.yes.filter((id) => active.some((m) => m.id === id)).length;
+    if (yes <= active.length / 2 || active.length === 0) continue;
+    const plan = STORY_PLANS.find((x) => x.key === p.key)!;
+    if (
+      s.setups.includes(p.key) ||
+      s.funds < plan.cost ||
+      s.materials < plan.materials ||
+      (p.key === "repair" && !s.diagnosed)
+    ) {
+      p.status = "expired";
+      event(
+        s,
+        now,
+        "proposal",
+        "Uma proposta perdeu validade porque o cenário ou os recursos mudaram.",
+      );
+      continue;
+    }
+    s.funds -= plan.cost;
+    s.materials -= plan.materials;
+    s.setups.push(p.key);
+    p.status = "approved";
+    if (p.key === "containers") s.water = Math.min(4, s.water + 2);
+    event(
+      s,
+      now,
+      "proposal",
+      `Aprovado: ${plan.label}. ${plan.cost} fichas e ${plan.materials} unidades de material utilizadas.`,
+    );
+  }
+}
+export function advanceCampaign(input: Campaign, now: number): Campaign {
+  const s = structuredClone(input);
+  if (s.phase === "enrollment" && now >= s.enrollEnd) {
+    if (s.members.filter((m) => !m.left).length < 3) {
+      s.phase = "unformed";
+      s.closed = s.enrollEnd;
+      s.ending = "A turma não reuniu três participantes. Não houve perda de pontos ou recursos.";
+      event(s, s.enrollEnd, "ending", s.ending);
+      return s;
+    }
+    s.phase = "playing";
+    s.start = s.enrollEnd;
+    s.end = s.start + 7 * DAY;
+    s.round = 1;
+    s.roundEnd = s.start + DAY;
+    event(s, s.start, "start", PREMISE);
+    event(s, s.start, "round", "Rodada 1 aberta. Cada pessoa pode confirmar uma ação principal.");
+  }
+  if (s.phase === "playing" && s.members.every((m) => m.left)) {
+    complete(s, now, "empty");
+    return s;
+  }
+  while (s.phase === "playing" && now >= s.roundEnd) {
+    const endingAt = s.roundEnd;
+    if (ready(s)) {
+      complete(s, endingAt, "success");
+      break;
+    }
+    const submitted = s.members.some((m) => m.acted.includes(s.round));
+    s.quiet = submitted ? 0 : s.quiet + 1;
+    for (const m of s.members.filter((m) => !m.left)) {
+      m.misses = m.acted.includes(s.round) ? 0 : m.misses + 1;
+      m.absent = m.misses >= 2;
+      m.pending = null;
+    }
+    for (const p of s.proposals) if (p.status === "open") p.status = "expired";
+    if (s.quiet >= 2 || s.round >= 7 || s.members.every((m) => m.left)) {
+      complete(s, endingAt, s.quiet >= 2 ? "quiet" : "deadline");
+      break;
+    }
+    s.round++;
+    s.roundEnd = s.start + s.round * DAY;
+    event(
+      s,
+      endingAt,
+      "round",
+      `Rodada ${s.round} aberta. ${activeMembers(s).length} participantes ativos. Ausentes podem retornar; ninguém age em seu nome.`,
+    );
+  }
+  return s;
+}
+export function mutateCampaign(
+  input: Campaign,
+  user: { id: string; name: string; role: string; avatar: string | null },
+  p: any,
+  now: number,
+  dice?: number[],
+): Campaign {
+  const s = advanceCampaign(input, now);
+  const id = user.id;
+  if (p.op === "join") {
+    if (s.phase !== "enrollment")
+      throw new StoryError("As inscrições desta turma já terminaram.", 409);
+    if (!STORY_KEYS.includes(p.talent) || p.accept !== true)
+      throw new StoryError("Escolha um talento e confirme as regras.");
+    if (s.members.some((m) => m.id === id) || s.waiting.some((m) => m.id === id))
+      throw new StoryError("Você já está inscrito.", 409);
+    if (s.waiting.length >= 24)
+      throw new StoryError("A lista de espera está cheia. Acompanhe a próxima turma.");
+    const m: Member = {
+      id,
+      name: user.name.slice(0, 60),
+      role: user.role.slice(0, 100) || "Habitante da Praça",
+      avatar: user.avatar,
+      talent: p.talent,
+      joined: now,
+      misses: 0,
+      absent: false,
+      left: false,
+      acted: [],
+      practice: {},
+      activities: [],
+      reflections: [],
+      boon: null,
+      focus: true,
+      pending: null,
+    };
+    (s.members.length < 6 ? s.members : s.waiting).push(m);
+    return s;
+  }
+  if (p.op === "leave") {
+    if (s.phase === "enrollment") {
+      s.members = s.members.filter((m) => m.id !== id);
+      s.waiting = s.waiting.filter((m) => m.id !== id);
+      if (s.members.length < 6 && s.waiting.length) s.members.push(s.waiting.shift()!);
+      return s;
+    }
+    const m = member(s, id);
+    if (s.phase !== "playing") throw new StoryError("A campanha terminou.");
+    m.left = true;
+    m.pending = null;
+    for (const proposal of s.proposals) {
+      proposal.yes = proposal.yes.filter((x) => x !== id);
+      proposal.no = proposal.no.filter((x) => x !== id);
+    }
+    event(s, now, "departure", `${m.name} saiu da campanha.`, id);
+    if (s.members.every((m) => m.left)) complete(s, now, "empty");
+    return s;
+  }
+  if (s.phase !== "playing") throw new StoryError("A campanha não está em andamento.", 409);
+  const m = member(s, id);
+  if (p.op === "return") {
+    if (!m.absent) throw new StoryError("Você já está ativo nesta rodada.");
+    m.absent = false;
+    m.misses = 0;
+    event(s, now, "return", `${m.name} retornou à campanha.`, id);
+    return s;
+  }
+  if (m.absent) throw new StoryError("Confirme seu retorno antes de participar.", 409);
+  if (p.op === "plan") {
+    if (ready(s))
+      throw new StoryError("O objetivo foi alcançado. O encerramento será no fim da rodada.");
+    if (s.proposals.some((x) => x.author === id && x.round === s.round))
+      throw new StoryError("Você já apresentou uma proposta nesta rodada.");
+    const plan = STORY_PLANS.find((x) => x.key === p.key);
+    if (
+      !plan ||
+      s.setups.includes(plan.key) ||
+      s.proposals.some((x) => x.key === plan.key && x.status === "open")
+    )
+      throw new StoryError("Proposta indisponível.");
+    if (
+      s.funds < plan.cost ||
+      s.materials < plan.materials ||
+      (plan.key === "repair" && !s.diagnosed)
+    )
+      throw new StoryError("Faltam recursos ou um diagnóstico para essa proposta.");
+    s.proposals.push({
+      id: crypto.randomUUID(),
+      key: plan.key,
+      author: id,
+      round: s.round,
+      yes: [id],
+      no: [],
+      status: "open",
+    });
+    event(s, now, "proposal", `${m.name} propôs: ${plan.label}.`, id);
+    settlePlans(s, now);
+    return s;
+  }
+  if (p.op === "vote") {
+    if (ready(s))
+      throw new StoryError("O objetivo foi alcançado. Não são necessários novos gastos.");
+    const proposal = s.proposals.find(
+      (x) => x.id === p.id && x.round === s.round && x.status === "open",
+    );
+    if (!proposal || typeof p.yes !== "boolean")
+      throw new StoryError("Esta proposta não está aberta.", 409);
+    proposal.yes = proposal.yes.filter((x) => x !== id);
+    proposal.no = proposal.no.filter((x) => x !== id);
+    (p.yes ? proposal.yes : proposal.no).push(id);
+    settlePlans(s, now);
+    return s;
+  }
+  if (p.op === "activity") {
+    if (m.activities.length >= 2)
+      throw new StoryError("Você já registrou as duas preparações desta campanha.");
+    if (m.boon) throw new StoryError("Use ou dispense sua preparação atual.");
+    if (
+      !STORY_KEYS.includes(p.skill) ||
+      m.activities.includes(p.skill) ||
+      !["fiction", "real"].includes(p.mode) ||
+      typeof p.note !== "string" ||
+      p.note.trim().length < 80 ||
+      p.note.length > 1600
+    )
+      throw new StoryError("Escolha uma habilidade nova e registre de 80 a 1.600 caracteres.");
+    m.activities.push(p.skill);
+    (m.reflections ||= []).push({ skill: p.skill, mode: p.mode, note: p.note.trim() });
+    m.boon = p.skill;
+    m.practice[p.skill as StorySkill] = (m.practice[p.skill as StorySkill] || 0) + 1;
+    return s;
+  }
+  if (p.op === "discard") {
+    m.boon = null;
+    return s;
+  }
+  if (p.op === "cancel") {
+    m.pending = null;
+    return s;
+  }
+  if (m.acted.includes(s.round))
+    throw new StoryError("Sua ação principal desta rodada já foi realizada.", 409);
+  if (p.op === "prepare") {
+    if (m.pending) throw new StoryError("Confirme ou cancele sua ação atual.");
+    const a = availableStoryActions(s).find((a) => a.id === p.action);
+    if (!a) throw new StoryError("Essa ação deixou de estar disponível.", 409);
+    m.pending = {
+      id: crypto.randomUUID(),
+      action: a.id,
+      intent: typeof p.intent === "string" ? p.intent.slice(0, 900) : a.label,
+      text:
+        typeof p.text === "string"
+          ? p.text.slice(0, 1200)
+          : "Confira o efeito e o risco antes de confirmar.",
+      round: s.round,
+    };
+    return s;
+  }
+  if (p.op === "roll") {
+    const pending = m.pending,
+      a = availableStoryActions(s).find((a) => a.id === pending?.action);
+    if (!pending || pending.id !== p.id || pending.round !== s.round || !a)
+      throw new StoryError("A situação mudou. Cancele a ação e escolha outra.", 409);
+    if (!dice || dice.length !== 2 || dice.some((d) => !Number.isInteger(d) || d < 1 || d > 6))
+      throw new StoryError("Dados inválidos.");
+    const focus = p.focus === true;
+    if (focus && (!m.focus || m.talent !== a.skill)) throw new StoryError("Talento indisponível.");
+    const b = storyBonus(m, a, focus),
+      total = dice[0] + dice[1] + b,
+      steps = total >= 10 ? 3 : total >= 7 ? 2 : 1;
+    if (focus) m.focus = false;
+    if (m.boon === a.skill) m.boon = null;
+    m.pending = null;
+    m.acted.push(s.round);
+    m.practice[a.skill] = (m.practice[a.skill] || 0) + 1;
+    let result = "";
+    if (a.id === "review")
+      result =
+        "Você revisou o que ficou pronto e registrou as pendências. O grupo conclui a história no fechamento desta rodada.";
+    if (a.id === "inspect") {
+      s.diagnosed = true;
+      s.repair = total < 7 ? -2 : total < 10 ? -1 : s.repair;
+      result =
+        "Uma conexão quebrada entre a caixa e as torneiras explica a falta de água. O grupo pode reservar material e trabalhar no reparo, ou buscar outra forma de abastecimento.";
+      if (s.repair < 0)
+        result += ` O contratempo deixou ${-s.repair} etapa(s) extra(s) de ajuste antes do reparo principal.`;
+    }
+    if (a.id === "repair") {
+      s.repair = Math.min(4, s.repair + steps);
+      result = `O reparo avançou ${steps} etapa(s). ${Math.max(0, s.repair)}/4 concluídas.`;
+    }
+    if (a.id === "supply") {
+      s.water = Math.min(4, s.water + steps);
+      result = `Foram preparados recipientes e pontos de abastecimento: ${s.water}/4 unidades de água.`;
+    }
+    if (a.id === "layout" || a.id === "access") {
+      s.layout = Math.min(4, s.layout + steps);
+      result = `A organização avançou ${steps} etapa(s): ${s.layout}/4 concluídas.`;
+    }
+    event(
+      s,
+      now,
+      "action",
+      `${m.name}: ${pending.intent}\n${STORY_SKILLS[a.skill]}: ${dice.join(" + ")} + ${b} = ${total}. ${total >= 10 ? "Sucesso" : total >= 7 ? "Sucesso com custo" : "Complicação"}.\n${result}`,
+      id,
+    );
+    return s;
+  }
+  throw new StoryError("Operação inválida.");
+}

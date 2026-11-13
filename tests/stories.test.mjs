@@ -1,26 +1,387 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {DatabaseSync} from 'node:sqlite';import {readFile} from 'node:fs/promises';import {transformWithEsbuild} from 'vite';
-async function url(file,replacements={}){let s=(await transformWithEsbuild(await readFile(file,'utf8'),file,{loader:'ts',target:'esnext'})).code;for(const[a,b]of Object.entries(replacements))s=s.replaceAll(JSON.stringify(a),JSON.stringify(b));return 'data:text/javascript;base64,'+Buffer.from(s).toString('base64')}
-const rulesUrl=await url('lib/stories.ts'),r=await import(rulesUrl),store=await import(await url('lib/stories-store.ts',{'./stories':rulesUrl}));const T=1000000,start=T+3*r.DAY;
-const account=id=>({id,name:'Pessoa '+id,role:'Papel '+id,avatar:null});
-function join(s,id){return r.mutateCampaign(s,account(id),{op:'join',talent:'investigar',accept:true},T+1)}
-function group(n=3){let s=r.newCampaign(T,'campaign');for(let i=0;i<n;i++)s=join(s,String(i));return r.advanceCampaign(s,start)}
-function action(s,id,key,now=start+10,dice=[1,1]){let n=r.mutateCampaign(s,account(id),{op:'prepare',action:key},now);return r.mutateCampaign(n,account(id),{op:'roll',id:n.members.find(m=>m.id===id).pending.id},now,dice)}
-const sql32=await readFile('drizzle/0032_oval_raider.sql','utf8'),sql34=await readFile('drizzle/0034_abnormal_steve_rogers.sql','utf8');
-function setup(){const d=new DatabaseSync(':memory:');d.exec("PRAGMA foreign_keys=ON;CREATE TABLE users(id TEXT PRIMARY KEY,display_name TEXT,deleted_at TEXT);CREATE TABLE notifications(id INTEGER PRIMARY KEY AUTOINCREMENT,recipient_id TEXT,type TEXT,title TEXT,body TEXT,href TEXT,dedupe_key TEXT UNIQUE);INSERT INTO users VALUES('0','Pessoa 0',NULL),('1','Pessoa 1',NULL),('2','Pessoa 2',NULL),('3','Pessoa 3',NULL),('gone','Excluída','2026');");d.exec(sql32);d.exec(sql34);const db={prepare(sql){const make=(args=[])=>({sql,args,bind:(...a)=>make(a),async first(){return d.prepare(sql).get(...args)||null},async all(){return {results:d.prepare(sql).all(...args)}},async run(){return {meta:{changes:Number(d.prepare(sql).run(...args).changes)}}}});return make()},async batch(queries){d.exec('BEGIN');try{const out=queries.map(q=>({meta:{changes:Number(d.prepare(q.sql).run(...q.args).changes)}}));d.exec('COMMIT');return out}catch(e){d.exec('ROLLBACK');throw e}}};return {d,db}}
-test('enrollment lasts 72 hours, caps seats, promotes consenting waitlist and does not begin early',()=>{let s=r.newCampaign(T,'x');for(let i=0;i<8;i++)s=join(s,String(i));assert.equal(s.members.length,6);assert.equal(s.waiting.length,2);assert.equal(r.advanceCampaign(s,start-1).phase,'enrollment');s=r.mutateCampaign(s,account('1'),{op:'leave'},T+100);assert.equal(s.members.length,6);assert.equal(s.members.at(-1).id,'6');assert.equal(s.waiting[0].id,'7');s=r.advanceCampaign(s,start);assert.equal(s.phase,'playing');assert.equal(s.end,start+7*r.DAY);assert.throws(()=>join(s,'8'));});
-test('insufficient enrollment ends safely and no fabricated players are added',()=>{let s=join(r.newCampaign(T,'x'),'0');s=r.advanceCampaign(s,start);assert.equal(s.phase,'unformed');assert.equal(s.members.length,1);assert.equal(s.closed,start);});
-test('one main action per round, stale rolls and unauthorized actors are rejected',()=>{let s=group();s=action(s,'0','inspect');assert.equal(s.diagnosed,true);assert.throws(()=>action(s,'0','layout'));assert.throws(()=>action(s,'stranger','layout'));assert.equal(s.members.find(m=>m.id==='0').acted.length,1);assert.equal(s.events.filter(e=>e.kind==='action').length,1);});
-test('resource spending requires a strict majority and is applied once',()=>{let s=group(4);s=r.mutateCampaign(s,account('0'),{op:'plan',key:'move'},start+10);const p=s.proposals[0];s=r.mutateCampaign(s,account('1'),{op:'vote',id:p.id,yes:true},start+11);assert.equal(s.funds,6);s=r.mutateCampaign(s,account('2'),{op:'vote',id:p.id,yes:true},start+12);assert.equal(s.funds,3);assert.equal(s.proposals[0].status,'approved');assert.throws(()=>r.mutateCampaign(s,account('3'),{op:'vote',id:p.id,yes:true},start+13));assert.equal(s.funds,3);});
-test('expired proposals do not spend funds and resource paths never allow negative balance',()=>{let s=group();s=r.mutateCampaign(s,account('0'),{op:'plan',key:'move'},start+10);s=r.advanceCampaign(s,start+r.DAY);assert.equal(s.proposals[0].status,'expired');assert.equal(s.funds,6);assert.throws(()=>r.mutateCampaign(s,account('0'),{op:'plan',key:'repair'},start+r.DAY+1));});
-test('two inactive rounds mark absences; an active survivor can return and continue without controlling others',()=>{let s=group();s=action(s,'0','inspect');s=r.advanceCampaign(s,start+r.DAY);s=action(s,'0','layout',start+r.DAY+10);s=r.advanceCampaign(s,start+2*r.DAY);assert.equal(s.members[1].absent,true);assert.equal(s.members[0].absent,false);assert.throws(()=>action(s,'1','supply',start+2*r.DAY+10));s=r.mutateCampaign(s,account('1'),{op:'return'},start+2*r.DAY+10);assert.equal(s.members[1].absent,false);assert.equal(s.members[1].acted.length,0);});
-test('two rounds without actions stop a campaign, pending proposals do not count as participation',()=>{let s=group();s=r.mutateCampaign(s,account('0'),{op:'prepare',action:'inspect'},start+10);s=r.advanceCampaign(s,start+2*r.DAY);assert.equal(s.phase,'ended');assert.equal(s.outcome,'interrupted');assert.ok(s.members.every(m=>m.pending===null));});
-test('all low dice remain playable: water and organization can be prepared without any specialty or spending',()=>{let s=group();for(let day=0;day<4;day++){const now=start+day*r.DAY+10;if(day)s=r.advanceCampaign(s,now);s=action(s,'0','supply',now);for(const id of ['1','2']){const available=r.availableStoryActions(s).map(a=>a.id);s=action(s,id,available.includes('layout')?'layout':available.includes('supply')?'supply':'review',now);}s=r.advanceCampaign(s,start+(day+1)*r.DAY);if(s.phase==='ended')break;}assert.equal(s.phase,'ended');assert.equal(s.outcome,'success');assert.equal(s.funds,6);assert.equal(s.materials,4);});
-test('early completion waits for the round boundary and allows late members to review',()=>{let s=group(6);s=action(s,'0','supply',start+10,[6,6]);s=action(s,'1','supply',start+11,[6,6]);s=action(s,'2','layout',start+12,[6,6]);s=action(s,'3','access',start+13,[6,6]);assert.equal(r.ready(s),true);assert.equal(s.phase,'playing');assert.deepEqual(r.availableStoryActions(s).map(a=>a.id),['review']);s=action(s,'4','review',start+14);assert.equal(s.members[4].acted.length,1);s=r.advanceCampaign(s,start+r.DAY);assert.equal(s.outcome,'success');});
-test('departure is explicit, removes votes, and an empty group closes without completion XP',()=>{let s=group();for(const id of ['0','1','2'])s=r.mutateCampaign(s,account(id),{op:'leave'},start+10);assert.equal(s.phase,'ended');assert.equal(s.outcome,'interrupted');assert.ok(s.members.every(m=>m.left));});
-test('real and fictional preparations have equivalent bounded rewards and private notes stay out of others views',()=>{let s=group(),p={op:'activity',skill:'cuidar',mode:'fiction',note:'Uma proposta concreta para manter a higiene e garantir descanso e acesso de todas as pessoas durante a feira.'};const a=r.mutateCampaign(s,account('0'),p,start+10),b=r.mutateCampaign(s,account('0'),{...p,mode:'real'},start+10);assert.equal(a.members[0].boon,b.members[0].boon);assert.equal(a.members[0].practice.cuidar,1);assert.ok(!JSON.stringify(store.storyView(a,'1')).includes(p.note));assert.ok(JSON.stringify(store.storyView(a,'0')).includes(p.note));assert.throws(()=>r.mutateCampaign(a,account('0'),p,start+11));});
-test('simultaneous enrollments cannot overwrite each other; stale revisions are rejected',async()=>{const{db,d}=setup();const row=await store.ensureStory(db,T);const results=await Promise.allSettled(['0','1'].map(id=>store.changeStory(db,row.state.id,row.revision,account(id),{op:'join',talent:'inventar',accept:true},T+1)));assert.equal(results.filter(r=>r.status==='fulfilled').length,1);assert.equal(results.filter(r=>r.status==='rejected'&&r.reason.status===409).length,1);assert.equal((await store.storyRow(db)).state.members.length,1);d.close()});
-test('unattended transitions and duplicate ticks produce one new lobby after the archive interval',async()=>{const{db,d}=setup();await store.ensureStory(db,T);await Promise.all([store.tickStories(db,start),store.tickStories(db,start)]);assert.equal((await store.storyRow(db)).state.phase,'unformed');await Promise.all([store.tickStories(db,start+3600001),store.tickStories(db,start+3600001)]);assert.equal(d.prepare('SELECT count(*) n FROM story_campaigns WHERE active=1').get().n,1);assert.equal(d.prepare('SELECT count(*) n FROM story_campaigns').get().n,2);d.close()});
-test('milestones and notifications are idempotent; replayed mutations cannot duplicate XP',async()=>{const{db,d}=setup();let row=await store.ensureStory(db,T);for(const id of ['0','1','2'])row=await store.changeStory(db,row.state.id,row.revision,account(id),{op:'join',talent:'inventar',accept:true},T+1);row=await store.tickStories(db,start);assert.equal(d.prepare('SELECT count(*) n FROM notifications').get().n,6);row=await store.changeStory(db,row.state.id,row.revision,account('0'),{op:'prepare',action:'inspect'},start+1);const p={op:'roll',id:row.state.members[0].pending.id},revision=row.revision;row=await store.changeStory(db,row.state.id,revision,account('0'),p,start+2,[6,6]);await assert.rejects(store.changeStory(db,row.state.id,revision,account('0'),p,start+2,[6,6]),e=>e.status===409);assert.equal(d.prepare("SELECT sum(xp) n FROM game_achievements WHERE user_id='0'").get().n,5);await store.tickStories(db,start+3);assert.equal(d.prepare('SELECT count(*) n FROM notifications').get().n,6);d.close()});
-test('private group chat checks membership, rejects outsiders and retries are idempotent',async()=>{const{db,d}=setup();let row=await store.ensureStory(db,T);for(const id of ['0','1','2'])row=await store.changeStory(db,row.state.id,row.revision,account(id),{op:'join',talent:'inventar',accept:true},T+1);row=await store.tickStories(db,start);await assert.rejects(store.sendStoryMessage(db,row.state.id,'3','message-123','Olá',start+1),e=>e.status===403);await store.sendStoryMessage(db,row.state.id,'0','message-123','Vamos organizar a feira.',start+1);await store.sendStoryMessage(db,row.state.id,'0','message-123','Vamos organizar a feira.',start+1);assert.equal((await store.storyMessages(db,row.state.id,'1')).length,1);await assert.rejects(store.storyMessages(db,row.state.id,'3'),e=>e.status===403);d.close()});
-test('deleted accounts leave the current group and lose mutation permission',async()=>{const{db,d}=setup();let row=await store.ensureStory(db,T);row=await store.changeStory(db,row.state.id,row.revision,account('0'),{op:'join',talent:'inventar',accept:true},T+1);d.exec("UPDATE users SET deleted_at='2026' WHERE id='0'");row=await store.tickStories(db,T+2);assert.equal(row.state.members.length,0);await assert.rejects(store.changeStory(db,row.state.id,row.revision,account('0'),{op:'join',talent:'inventar',accept:true},T+3),e=>e.status===409);d.close()});
-test('repair requires diagnosis and approved material, and low dice can complete it without spending twice',()=>{let s=group();assert.throws(()=>action(s,'0','repair'));s=action(s,'0','inspect');assert.equal(s.repair,-2);s=r.mutateCampaign(s,account('0'),{op:'plan',key:'repair'},start+11);s=r.mutateCampaign(s,account('1'),{op:'vote',id:s.proposals[0].id,yes:true},start+12);assert.equal(s.materials,2);s=action(s,'1','repair',start+13);s=action(s,'2','repair',start+14);s=r.advanceCampaign(s,start+r.DAY);for(const id of ['0','1','2'])s=action(s,id,'repair',start+r.DAY+10);assert.equal(s.repair,3);s=r.advanceCampaign(s,start+2*r.DAY);s=action(s,'0','repair',start+2*r.DAY+10);assert.equal(s.repair,4);assert.equal(s.materials,2);assert.throws(()=>r.mutateCampaign(s,account('0'),{op:'return'},start+2*r.DAY+11));});
+import test from "node:test";
+import assert from "node:assert/strict";
+import { DatabaseSync } from "node:sqlite";
+import { readFile } from "node:fs/promises";
+import { transformWithEsbuild } from "vite";
+async function url(file, replacements = {}) {
+  let s = (
+    await transformWithEsbuild(await readFile(file, "utf8"), file, {
+      loader: "ts",
+      target: "esnext",
+    })
+  ).code;
+  for (const [a, b] of Object.entries(replacements))
+    s = s.replaceAll(JSON.stringify(a), JSON.stringify(b));
+  return "data:text/javascript;base64," + Buffer.from(s).toString("base64");
+}
+const rulesUrl = await url("lib/stories.ts"),
+  r = await import(rulesUrl),
+  store = await import(await url("lib/stories-store.ts", { "./stories": rulesUrl }));
+const T = 1000000,
+  start = T + 3 * r.DAY;
+const account = (id) => ({ id, name: "Pessoa " + id, role: "Papel " + id, avatar: null });
+function join(s, id) {
+  return r.mutateCampaign(
+    s,
+    account(id),
+    { op: "join", talent: "investigar", accept: true },
+    T + 1,
+  );
+}
+function group(n = 3) {
+  let s = r.newCampaign(T, "campaign");
+  for (let i = 0; i < n; i++) s = join(s, String(i));
+  return r.advanceCampaign(s, start);
+}
+function action(s, id, key, now = start + 10, dice = [1, 1]) {
+  const n = r.mutateCampaign(s, account(id), { op: "prepare", action: key }, now);
+  return r.mutateCampaign(
+    n,
+    account(id),
+    { op: "roll", id: n.members.find((m) => m.id === id).pending.id },
+    now,
+    dice,
+  );
+}
+const sql32 = await readFile("tests/fixtures/sqlite-migrations/0032_oval_raider.sql", "utf8"),
+  sql34 = await readFile("tests/fixtures/sqlite-migrations/0034_abnormal_steve_rogers.sql", "utf8");
+function setup() {
+  const d = new DatabaseSync(":memory:");
+  d.exec(
+    "PRAGMA foreign_keys=ON;CREATE TABLE users(id TEXT PRIMARY KEY,display_name TEXT,deleted_at TEXT);CREATE TABLE notifications(id INTEGER PRIMARY KEY AUTOINCREMENT,recipient_id TEXT,type TEXT,title TEXT,body TEXT,href TEXT,dedupe_key TEXT UNIQUE);INSERT INTO users VALUES('0','Pessoa 0',NULL),('1','Pessoa 1',NULL),('2','Pessoa 2',NULL),('3','Pessoa 3',NULL),('gone','Excluída','2026');",
+  );
+  d.exec(sql32);
+  d.exec(sql34);
+  const db = {
+    prepare(sql) {
+      const make = (args = []) => ({
+        sql,
+        args,
+        bind: (...a) => make(a),
+        async first() {
+          return d.prepare(sql).get(...args) || null;
+        },
+        async all() {
+          return { results: d.prepare(sql).all(...args) };
+        },
+        async run() {
+          return { meta: { changes: Number(d.prepare(sql).run(...args).changes) } };
+        },
+      });
+      return make();
+    },
+    async batch(queries) {
+      d.exec("BEGIN");
+      try {
+        const out = queries.map((q) => ({
+          meta: { changes: Number(d.prepare(q.sql).run(...q.args).changes) },
+        }));
+        d.exec("COMMIT");
+        return out;
+      } catch (e) {
+        d.exec("ROLLBACK");
+        throw e;
+      }
+    },
+  };
+  return { d, db };
+}
+test("enrollment lasts 72 hours, caps seats, promotes consenting waitlist and does not begin early", () => {
+  let s = r.newCampaign(T, "x");
+  for (let i = 0; i < 8; i++) s = join(s, String(i));
+  assert.equal(s.members.length, 6);
+  assert.equal(s.waiting.length, 2);
+  assert.equal(r.advanceCampaign(s, start - 1).phase, "enrollment");
+  s = r.mutateCampaign(s, account("1"), { op: "leave" }, T + 100);
+  assert.equal(s.members.length, 6);
+  assert.equal(s.members.at(-1).id, "6");
+  assert.equal(s.waiting[0].id, "7");
+  s = r.advanceCampaign(s, start);
+  assert.equal(s.phase, "playing");
+  assert.equal(s.end, start + 7 * r.DAY);
+  assert.throws(() => join(s, "8"));
+});
+test("insufficient enrollment ends safely and no fabricated players are added", () => {
+  let s = join(r.newCampaign(T, "x"), "0");
+  s = r.advanceCampaign(s, start);
+  assert.equal(s.phase, "unformed");
+  assert.equal(s.members.length, 1);
+  assert.equal(s.closed, start);
+});
+test("one main action per round, stale rolls and unauthorized actors are rejected", () => {
+  let s = group();
+  s = action(s, "0", "inspect");
+  assert.equal(s.diagnosed, true);
+  assert.throws(() => action(s, "0", "layout"));
+  assert.throws(() => action(s, "stranger", "layout"));
+  assert.equal(s.members.find((m) => m.id === "0").acted.length, 1);
+  assert.equal(s.events.filter((e) => e.kind === "action").length, 1);
+});
+test("resource spending requires a strict majority and is applied once", () => {
+  let s = group(4);
+  s = r.mutateCampaign(s, account("0"), { op: "plan", key: "move" }, start + 10);
+  const p = s.proposals[0];
+  s = r.mutateCampaign(s, account("1"), { op: "vote", id: p.id, yes: true }, start + 11);
+  assert.equal(s.funds, 6);
+  s = r.mutateCampaign(s, account("2"), { op: "vote", id: p.id, yes: true }, start + 12);
+  assert.equal(s.funds, 3);
+  assert.equal(s.proposals[0].status, "approved");
+  assert.throws(() =>
+    r.mutateCampaign(s, account("3"), { op: "vote", id: p.id, yes: true }, start + 13),
+  );
+  assert.equal(s.funds, 3);
+});
+test("expired proposals do not spend funds and resource paths never allow negative balance", () => {
+  let s = group();
+  s = r.mutateCampaign(s, account("0"), { op: "plan", key: "move" }, start + 10);
+  s = r.advanceCampaign(s, start + r.DAY);
+  assert.equal(s.proposals[0].status, "expired");
+  assert.equal(s.funds, 6);
+  assert.throws(() =>
+    r.mutateCampaign(s, account("0"), { op: "plan", key: "repair" }, start + r.DAY + 1),
+  );
+});
+test("two inactive rounds mark absences; an active survivor can return and continue without controlling others", () => {
+  let s = group();
+  s = action(s, "0", "inspect");
+  s = r.advanceCampaign(s, start + r.DAY);
+  s = action(s, "0", "layout", start + r.DAY + 10);
+  s = r.advanceCampaign(s, start + 2 * r.DAY);
+  assert.equal(s.members[1].absent, true);
+  assert.equal(s.members[0].absent, false);
+  assert.throws(() => action(s, "1", "supply", start + 2 * r.DAY + 10));
+  s = r.mutateCampaign(s, account("1"), { op: "return" }, start + 2 * r.DAY + 10);
+  assert.equal(s.members[1].absent, false);
+  assert.equal(s.members[1].acted.length, 0);
+});
+test("two rounds without actions stop a campaign, pending proposals do not count as participation", () => {
+  let s = group();
+  s = r.mutateCampaign(s, account("0"), { op: "prepare", action: "inspect" }, start + 10);
+  s = r.advanceCampaign(s, start + 2 * r.DAY);
+  assert.equal(s.phase, "ended");
+  assert.equal(s.outcome, "interrupted");
+  assert.ok(s.members.every((m) => m.pending === null));
+});
+test("all low dice remain playable: water and organization can be prepared without any specialty or spending", () => {
+  let s = group();
+  for (let day = 0; day < 4; day++) {
+    const now = start + day * r.DAY + 10;
+    if (day) s = r.advanceCampaign(s, now);
+    s = action(s, "0", "supply", now);
+    for (const id of ["1", "2"]) {
+      const available = r.availableStoryActions(s).map((a) => a.id);
+      s = action(
+        s,
+        id,
+        available.includes("layout")
+          ? "layout"
+          : available.includes("supply")
+            ? "supply"
+            : "review",
+        now,
+      );
+    }
+    s = r.advanceCampaign(s, start + (day + 1) * r.DAY);
+    if (s.phase === "ended") break;
+  }
+  assert.equal(s.phase, "ended");
+  assert.equal(s.outcome, "success");
+  assert.equal(s.funds, 6);
+  assert.equal(s.materials, 4);
+});
+test("early completion waits for the round boundary and allows late members to review", () => {
+  let s = group(6);
+  s = action(s, "0", "supply", start + 10, [6, 6]);
+  s = action(s, "1", "supply", start + 11, [6, 6]);
+  s = action(s, "2", "layout", start + 12, [6, 6]);
+  s = action(s, "3", "access", start + 13, [6, 6]);
+  assert.equal(r.ready(s), true);
+  assert.equal(s.phase, "playing");
+  assert.deepEqual(
+    r.availableStoryActions(s).map((a) => a.id),
+    ["review"],
+  );
+  s = action(s, "4", "review", start + 14);
+  assert.equal(s.members[4].acted.length, 1);
+  s = r.advanceCampaign(s, start + r.DAY);
+  assert.equal(s.outcome, "success");
+});
+test("departure is explicit, removes votes, and an empty group closes without completion XP", () => {
+  let s = group();
+  for (const id of ["0", "1", "2"])
+    s = r.mutateCampaign(s, account(id), { op: "leave" }, start + 10);
+  assert.equal(s.phase, "ended");
+  assert.equal(s.outcome, "interrupted");
+  assert.ok(s.members.every((m) => m.left));
+});
+test("real and fictional preparations have equivalent bounded rewards and private notes stay out of others views", () => {
+  const s = group(),
+    p = {
+      op: "activity",
+      skill: "cuidar",
+      mode: "fiction",
+      note: "Uma proposta concreta para manter a higiene e garantir descanso e acesso de todas as pessoas durante a feira.",
+    };
+  const a = r.mutateCampaign(s, account("0"), p, start + 10),
+    b = r.mutateCampaign(s, account("0"), { ...p, mode: "real" }, start + 10);
+  assert.equal(a.members[0].boon, b.members[0].boon);
+  assert.equal(a.members[0].practice.cuidar, 1);
+  assert.ok(!JSON.stringify(store.storyView(a, "1")).includes(p.note));
+  assert.ok(JSON.stringify(store.storyView(a, "0")).includes(p.note));
+  assert.throws(() => r.mutateCampaign(a, account("0"), p, start + 11));
+});
+test("simultaneous enrollments cannot overwrite each other; stale revisions are rejected", async () => {
+  const { db, d } = setup();
+  const row = await store.ensureStory(db, T);
+  const results = await Promise.allSettled(
+    ["0", "1"].map((id) =>
+      store.changeStory(
+        db,
+        row.state.id,
+        row.revision,
+        account(id),
+        { op: "join", talent: "inventar", accept: true },
+        T + 1,
+      ),
+    ),
+  );
+  assert.equal(results.filter((r) => r.status === "fulfilled").length, 1);
+  assert.equal(results.filter((r) => r.status === "rejected" && r.reason.status === 409).length, 1);
+  assert.equal((await store.storyRow(db)).state.members.length, 1);
+  d.close();
+});
+test("unattended transitions and duplicate ticks produce one new lobby after the archive interval", async () => {
+  const { db, d } = setup();
+  await store.ensureStory(db, T);
+  await Promise.all([store.tickStories(db, start), store.tickStories(db, start)]);
+  assert.equal((await store.storyRow(db)).state.phase, "unformed");
+  await Promise.all([
+    store.tickStories(db, start + 3600001),
+    store.tickStories(db, start + 3600001),
+  ]);
+  assert.equal(d.prepare("SELECT count(*) n FROM story_campaigns WHERE active=1").get().n, 1);
+  assert.equal(d.prepare("SELECT count(*) n FROM story_campaigns").get().n, 2);
+  d.close();
+});
+test("milestones and notifications are idempotent; replayed mutations cannot duplicate XP", async () => {
+  const { db, d } = setup();
+  let row = await store.ensureStory(db, T);
+  for (const id of ["0", "1", "2"])
+    row = await store.changeStory(
+      db,
+      row.state.id,
+      row.revision,
+      account(id),
+      { op: "join", talent: "inventar", accept: true },
+      T + 1,
+    );
+  row = await store.tickStories(db, start);
+  assert.equal(d.prepare("SELECT count(*) n FROM notifications").get().n, 6);
+  row = await store.changeStory(
+    db,
+    row.state.id,
+    row.revision,
+    account("0"),
+    { op: "prepare", action: "inspect" },
+    start + 1,
+  );
+  const p = { op: "roll", id: row.state.members[0].pending.id },
+    revision = row.revision;
+  row = await store.changeStory(db, row.state.id, revision, account("0"), p, start + 2, [6, 6]);
+  await assert.rejects(
+    store.changeStory(db, row.state.id, revision, account("0"), p, start + 2, [6, 6]),
+    (e) => e.status === 409,
+  );
+  assert.equal(d.prepare("SELECT sum(xp) n FROM game_achievements WHERE user_id='0'").get().n, 5);
+  await store.tickStories(db, start + 3);
+  assert.equal(d.prepare("SELECT count(*) n FROM notifications").get().n, 6);
+  d.close();
+});
+test("private group chat checks membership, rejects outsiders and retries are idempotent", async () => {
+  const { db, d } = setup();
+  let row = await store.ensureStory(db, T);
+  for (const id of ["0", "1", "2"])
+    row = await store.changeStory(
+      db,
+      row.state.id,
+      row.revision,
+      account(id),
+      { op: "join", talent: "inventar", accept: true },
+      T + 1,
+    );
+  row = await store.tickStories(db, start);
+  await assert.rejects(
+    store.sendStoryMessage(db, row.state.id, "3", "message-123", "Olá", start + 1),
+    (e) => e.status === 403,
+  );
+  await store.sendStoryMessage(
+    db,
+    row.state.id,
+    "0",
+    "message-123",
+    "Vamos organizar a feira.",
+    start + 1,
+  );
+  await store.sendStoryMessage(
+    db,
+    row.state.id,
+    "0",
+    "message-123",
+    "Vamos organizar a feira.",
+    start + 1,
+  );
+  assert.equal((await store.storyMessages(db, row.state.id, "1")).length, 1);
+  await assert.rejects(store.storyMessages(db, row.state.id, "3"), (e) => e.status === 403);
+  d.close();
+});
+test("deleted accounts leave the current group and lose mutation permission", async () => {
+  const { db, d } = setup();
+  let row = await store.ensureStory(db, T);
+  row = await store.changeStory(
+    db,
+    row.state.id,
+    row.revision,
+    account("0"),
+    { op: "join", talent: "inventar", accept: true },
+    T + 1,
+  );
+  d.exec("UPDATE users SET deleted_at='2026' WHERE id='0'");
+  row = await store.tickStories(db, T + 2);
+  assert.equal(row.state.members.length, 0);
+  await assert.rejects(
+    store.changeStory(
+      db,
+      row.state.id,
+      row.revision,
+      account("0"),
+      { op: "join", talent: "inventar", accept: true },
+      T + 3,
+    ),
+    (e) => e.status === 409,
+  );
+  d.close();
+});
+test("repair requires diagnosis and approved material, and low dice can complete it without spending twice", () => {
+  let s = group();
+  assert.throws(() => action(s, "0", "repair"));
+  s = action(s, "0", "inspect");
+  assert.equal(s.repair, -2);
+  s = r.mutateCampaign(s, account("0"), { op: "plan", key: "repair" }, start + 11);
+  s = r.mutateCampaign(
+    s,
+    account("1"),
+    { op: "vote", id: s.proposals[0].id, yes: true },
+    start + 12,
+  );
+  assert.equal(s.materials, 2);
+  s = action(s, "1", "repair", start + 13);
+  s = action(s, "2", "repair", start + 14);
+  s = r.advanceCampaign(s, start + r.DAY);
+  for (const id of ["0", "1", "2"]) s = action(s, id, "repair", start + r.DAY + 10);
+  assert.equal(s.repair, 3);
+  s = r.advanceCampaign(s, start + 2 * r.DAY);
+  s = action(s, "0", "repair", start + 2 * r.DAY + 10);
+  assert.equal(s.repair, 4);
+  assert.equal(s.materials, 2);
+  assert.throws(() => r.mutateCampaign(s, account("0"), { op: "return" }, start + 2 * r.DAY + 11));
+});

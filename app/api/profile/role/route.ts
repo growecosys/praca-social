@@ -1,6 +1,6 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import { getDb } from "../../../../db";
-import { activityEvents, roleGenerations, users } from "../../../../db/schema";
+import { activityEvents, roleGenerations, users, nowText } from "../../../../db/schema";
 import { requirePracaUser } from "../../../../lib/praca-auth";
 import {
   generateProfileIdentity,
@@ -36,9 +36,8 @@ export async function POST(request: Request) {
   try {
     payload = await request.json();
   } catch {}
-  const answers = (payload.answers || JSON.parse(user.answersJson || "[]")).map(
-    (answer) => normalize(String(answer)),
-  );
+  const rawAnswers: unknown[] = payload.answers || JSON.parse(user.answersJson || "[]");
+  const answers = rawAnswers.map((answer) => normalize(String(answer)));
   if (
     answers.length !== 5 ||
     answers.some((answer) => words(answer).length !== 3 || answer.length > 80)
@@ -96,7 +95,7 @@ export async function POST(request: Request) {
     .update(users)
     .set({
       generationsUsed: sql`${users.generationsUsed} + 1`,
-      updatedAt: sql`CURRENT_TIMESTAMP`,
+      updatedAt: nowText,
     })
     .where(eq(users.id, user.id));
   await db.insert(activityEvents).values({
@@ -146,26 +145,19 @@ export async function PATCH(request: Request) {
       .from(activityEvents)
       .where(eq(activityEvents.userId, user.id));
     const recorded = historicalEvents.some((event) => {
-      if (!["profile_completed", "role_regenerated"].includes(event.action))
-        return false;
+      if (!["profile_completed", "role_regenerated"].includes(event.action)) return false;
       try {
         const metadata = JSON.parse(event.metadataJson) as {
           roleTitle?: string;
           previousRoleTitle?: string;
         };
-        return (
-          metadata.roleTitle === roleTitle ||
-          metadata.previousRoleTitle === roleTitle
-        );
+        return metadata.roleTitle === roleTitle || metadata.previousRoleTitle === roleTitle;
       } catch {
         return false;
       }
     });
     if (!roleTitle || !recorded)
-      return Response.json(
-        { error: "Registro histórico não encontrado." },
-        { status: 404 },
-      );
+      return Response.json({ error: "Registro histórico não encontrado." }, { status: 404 });
     const answers = JSON.parse(user.answersJson || "[]") as string[];
     const identity = await reconstructLegacyIdentity(roleTitle, answers);
     const generationId = crypto.randomUUID();
@@ -184,7 +176,7 @@ export async function PATCH(request: Request) {
       explanation:
         "Versão reconstruída a partir do título histórico e das cinco respostas preservadas.",
       status: "applied",
-      appliedAt: sql`CURRENT_TIMESTAMP`,
+      appliedAt: nowText,
     });
     await db
       .update(users)
@@ -192,7 +184,7 @@ export async function PATCH(request: Request) {
         roleTitle,
         manifesto: identity.manifesto,
         avatarJson,
-        updatedAt: sql`CURRENT_TIMESTAMP`,
+        updatedAt: nowText,
       })
       .where(eq(users.id, user.id));
     await db.insert(activityEvents).values({
@@ -208,30 +200,19 @@ export async function PATCH(request: Request) {
     });
     return Response.json({ ok: true, reconstructed: true });
   }
-  if (
-    !payload.generationId ||
-    !["apply", "reject", "select"].includes(payload.action || "")
-  )
+  if (!payload.generationId || !["apply", "reject", "select"].includes(payload.action || ""))
     return Response.json({ error: "Ação inválida." }, { status: 400 });
   const condition =
     payload.action === "select"
-      ? and(
-          eq(roleGenerations.id, payload.generationId),
-          eq(roleGenerations.userId, user.id),
-        )
+      ? and(eq(roleGenerations.id, payload.generationId), eq(roleGenerations.userId, user.id))
       : and(
           eq(roleGenerations.id, payload.generationId),
           eq(roleGenerations.userId, user.id),
           eq(roleGenerations.status, "pending"),
         );
-  const generation = (
-    await db.select().from(roleGenerations).where(condition).limit(1)
-  )[0];
+  const generation = (await db.select().from(roleGenerations).where(condition).limit(1))[0];
   if (!generation)
-    return Response.json(
-      { error: "Esta versão não está mais disponível." },
-      { status: 404 },
-    );
+    return Response.json({ error: "Esta versão não está mais disponível." }, { status: 404 });
   if (payload.action === "apply" || payload.action === "select")
     await db
       .update(users)
@@ -240,7 +221,7 @@ export async function PATCH(request: Request) {
         roleTitle: generation.roleTitle,
         manifesto: generation.manifesto,
         avatarJson: generation.avatarJson,
-        updatedAt: sql`CURRENT_TIMESTAMP`,
+        updatedAt: nowText,
       })
       .where(eq(users.id, user.id));
   if (payload.action !== "select")
@@ -248,7 +229,7 @@ export async function PATCH(request: Request) {
       .update(roleGenerations)
       .set({
         status: payload.action === "apply" ? "applied" : "rejected",
-        appliedAt: sql`CURRENT_TIMESTAMP`,
+        appliedAt: nowText,
       })
       .where(eq(roleGenerations.id, generation.id));
   const action =

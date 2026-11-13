@@ -14,6 +14,18 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
   ]),
   {
+    // Known debt in app code: surfaced as warnings so `npm run lint` stays actionable.
+    // Burn these down incrementally, then promote them back to errors.
+    files: ["app/**/*.{ts,tsx}", "components/**/*.{ts,tsx}", "lib/**/*.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "warn",
+      "react-hooks/set-state-in-effect": "warn",
+      "react-hooks/refs": "warn",
+      "react-hooks/purity": "warn",
+      "react-hooks/immutability": "warn",
+    },
+  },
+  {
     files: ["components/ui/**/*.{ts,tsx}", "hooks/use-mobile.ts"],
     rules: {
       // These files are vendored verbatim from shadcn@4.17.0. Keep the

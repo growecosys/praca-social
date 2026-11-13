@@ -1,3 +1,4 @@
+import { createResponse } from "./ai";
 const prompts = [
   "O que você protege?",
   "O que te revolta?",
@@ -76,7 +77,7 @@ const symbolDefinitions = {
   ponte: "mediação ou travessia real entre lados separados",
   semente: "cultivo, começo, propagação ou paciência",
   chave: "acesso, desbloqueio, revelação ou solução",
-  "faísca": "provocação, ruptura, mobilização ou início súbito",
+  faísca: "provocação, ruptura, mobilização ou início súbito",
   espiral: "transformação, recorrência, complexidade ou aprendizagem",
 };
 
@@ -95,7 +96,11 @@ function first(value: string) {
 }
 
 function firstWord(value: string) {
-  return first(value).split(/\s+/)[0]?.replace(/[^\p{L}\p{N}-]/gu, "") || "Comum";
+  return (
+    first(value)
+      .split(/\s+/)[0]
+      ?.replace(/[^\p{L}\p{N}-]/gu, "") || "Comum"
+  );
 }
 
 function normalizeRoleTitle(value: unknown, fallbackTitle: string) {
@@ -125,23 +130,14 @@ function fallback(answers: string[]) {
     .split("")
     .reduce((sum, character) => sum + character.charCodeAt(0), 0);
   const offices = ["Ouvidor", "Síndico", "Fiscal", "Ministro"];
-  const tensions = [
-    "Inconveniente",
-    "Provisório",
-    "Extraoficial",
-    "Improvável",
-  ];
+  const tensions = ["Inconveniente", "Provisório", "Extraoficial", "Improvável"];
   const symbol = symbols[seed % symbols.length];
   return {
     roleTitle: `${offices[seed % offices.length]} ${tensions[(seed + 1) % tensions.length]} ${firstWord(mapping.causa)}`,
     manifesto: `Organiza ${first(mapping.metodo)} contra ${first(mapping.adversario)}, para que ${first(mapping.horizonte)} deixe de ser desculpa.`,
     symbol,
     symbolMeaning: symbolDefinitions[symbol],
-    colors: [
-      colors[seed % colors.length],
-      colors[(seed + 2) % colors.length],
-      "#f5f1e8",
-    ],
+    colors: [colors[seed % colors.length], colors[(seed + 2) % colors.length], "#f5f1e8"],
     mapping,
     roleComponents: {
       semanticAnchor: `${first(mapping.metodo)} em defesa de ${first(mapping.causa)}`,
@@ -167,9 +163,6 @@ export async function generateProfileIdentity(
 ) {
   let identity = fallback(answers);
   try {
-    const { env } = await import("cloudflare:workers");
-    const key = (env as any).OPENAI_API_KEY;
-    if (!key) return identity;
     const schema = {
       type: "object",
       properties: {
@@ -205,16 +198,10 @@ export async function generateProfileIdentity(
       ],
       additionalProperties: false,
     };
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${key}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-5-mini",
-        store: false,
-        instructions: `Crie um papel simbólico em português brasileiro seguindo rigorosamente esta arquitetura sem explicá-la ao usuário: causa = o que protege; adversário = o que revolta; método = talento estranho; contradição = defeito produtivo; horizonte = mundo procurado.
+    const response = await createResponse({
+      model: "gpt-5-mini",
+      store: false,
+      instructions: `Crie um papel simbólico em português brasileiro seguindo rigorosamente esta arquitetura sem explicá-la ao usuário: causa = o que protege; adversário = o que revolta; método = talento estranho; contradição = defeito produtivo; horizonte = mundo procurado.
 
 O resultado deve ser uma caricatura afetuosa das contradições da pessoa transformada em um cargo impossível: absurdo, solene e estranhamente necessário. O humor precisa nascer do atrito real entre as cinco respostas, principalmente entre método e contradição. Não acrescente aleatoriedade desconectada das respostas.
 
@@ -241,22 +228,21 @@ Regras do manifesto:
 - depois do humor, a pessoa deve reconhecer algo verdadeiro sobre si.
 
 Prioridades: 1) fidelidade às cinco respostas; 2) contradição reconhecível; 3) coerência entre título e manifesto; 4) originalidade; 5) elegância. Nunca use aparência, raça, gênero, deficiência ou atributos sensíveis. Não escolha símbolo, cores ou direção visual nesta etapa. A explanation é exibida ao usuário: explique em no máximo 35 palavras como as respostas se conectam, sem falar de sátira, caricatura, candidatos, intensidade ou funcionamento interno.`,
-        input: JSON.stringify({
-          mapping: mapIdentityAnswers(answers),
-          source: prompts.map((prompt, index) => ({
-            prompt,
-            answer: answers[index],
-          })),
-        }),
-        text: {
-          format: {
-            type: "json_schema",
-            name: "praca_identity",
-            strict: true,
-            schema,
-          },
-        },
+      input: JSON.stringify({
+        mapping: mapIdentityAnswers(answers),
+        source: prompts.map((prompt, index) => ({
+          prompt,
+          answer: answers[index],
+        })),
       }),
+      text: {
+        format: {
+          type: "json_schema",
+          name: "praca_identity",
+          strict: true,
+          schema,
+        },
+      },
     });
     const data = (await response.json()) as any;
     if (response.ok) {
@@ -295,45 +281,31 @@ Prioridades: 1) fidelidade às cinco respostas; 2) contradição reconhecível; 
           action: { type: "string" },
           satiricalDetail: { type: "string" },
         },
-        required: [
-          "symbol",
-          "symbolMeaning",
-          "colors",
-          "character",
-          "action",
-          "satiricalDetail",
-        ],
+        required: ["symbol", "symbolMeaning", "colors", "character", "action", "satiricalDetail"],
         additionalProperties: false,
       };
-      const visualResponse = await fetch("https://api.openai.com/v1/responses", {
-        method: "POST",
-        headers: {
-          authorization: `Bearer ${key}`,
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-5-mini",
-          store: false,
-          instructions: `Crie somente a direção visual estruturada para a identidade fornecida. Não reescreva o título nem o manifesto.
+      const visualResponse = await createResponse({
+        model: "gpt-5-mini",
+        store: false,
+        instructions: `Crie somente a direção visual estruturada para a identidade fornecida. Não reescreva o título nem o manifesto.
 
 Escolha exatamente um símbolo segundo esta taxonomia: ${JSON.stringify(symbolDefinitions)}. Ponte só é válida quando existe mediação ou travessia concreta entre lados separados; conexão, confiança, integração ou organização isoladamente não bastam. Escolha o símbolo mais específico, não o mais genérico. Evite estes símbolos usados recentemente quando outra opção tiver aderência equivalente: ${JSON.stringify(options.avoidSymbols || [])}.
 
 As três cores devem ser códigos hexadecimais válidos e distintos. O personagem deve ser uma criatura, objeto ou figura simbólica curta. A ação deve tornar o manifesto visível. O detalhe satírico deve nascer da contradição produtiva, ser visual e não humilhar a pessoa. Cada texto deve ter no máximo 12 palavras. Nunca use aparência, raça, gênero, deficiência ou atributos sensíveis.`,
-          input: JSON.stringify({
-            roleTitle: identity.roleTitle,
-            manifesto: identity.manifesto,
-            mapping: identity.mapping,
-            roleComponents: identity.roleComponents,
-          }),
-          text: {
-            format: {
-              type: "json_schema",
-              name: "praca_visual_direction",
-              strict: true,
-              schema: visualSchema,
-            },
-          },
+        input: JSON.stringify({
+          roleTitle: identity.roleTitle,
+          manifesto: identity.manifesto,
+          mapping: identity.mapping,
+          roleComponents: identity.roleComponents,
         }),
+        text: {
+          format: {
+            type: "json_schema",
+            name: "praca_visual_direction",
+            strict: true,
+            schema: visualSchema,
+          },
+        },
       });
       if (visualResponse.ok) {
         const visualData = (await visualResponse.json()) as any;
@@ -354,10 +326,7 @@ As três cores devem ser códigos hexadecimais válidos e distintos. O personage
   return identity;
 }
 
-export async function reconstructLegacyIdentity(
-  roleTitle: string,
-  answers: string[],
-) {
+export async function reconstructLegacyIdentity(roleTitle: string, answers: string[]) {
   const fallbackIdentity = {
     manifesto:
       "Versão recuperada do arquivo da Praça e reconstruída a partir dos sinais originais.",
@@ -365,9 +334,6 @@ export async function reconstructLegacyIdentity(
     colors: ["#244e35", "#f0c64b", "#f5f1e8"],
   };
   try {
-    const { env } = await import("cloudflare:workers");
-    const key = (env as any).OPENAI_API_KEY;
-    if (!key) return fallbackIdentity;
     const schema = {
       type: "object",
       properties: {
@@ -386,27 +352,20 @@ export async function reconstructLegacyIdentity(
       required: ["manifesto", "symbol", "colors"],
       additionalProperties: false,
     };
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${key}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-5-mini",
-        store: false,
-        instructions:
-          "Reconstrua os elementos ausentes de um papel histórico da Praça. Preserve exatamente o título fornecido. Crie manifesto em português brasileiro com no máximo 18 palavras, símbolo e três cores coerentes com o título e as cinco respostas. Não alegue que o texto é o manifesto original.",
-        input: JSON.stringify({ roleTitle, answers }),
-        text: {
-          format: {
-            type: "json_schema",
-            name: "legacy_identity",
-            strict: true,
-            schema,
-          },
+    const response = await createResponse({
+      model: "gpt-5-mini",
+      store: false,
+      instructions:
+        "Reconstrua os elementos ausentes de um papel histórico da Praça. Preserve exatamente o título fornecido. Crie manifesto em português brasileiro com no máximo 18 palavras, símbolo e três cores coerentes com o título e as cinco respostas. Não alegue que o texto é o manifesto original.",
+      input: JSON.stringify({ roleTitle, answers }),
+      text: {
+        format: {
+          type: "json_schema",
+          name: "legacy_identity",
+          strict: true,
+          schema,
         },
-      }),
+      },
     });
     const data = (await response.json()) as any;
     if (!response.ok) return fallbackIdentity;

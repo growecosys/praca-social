@@ -56,13 +56,19 @@ export default function RoleGenerator({
   const [preview, setPreview] = useState<Preview | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  useDialogFocus(open,()=>{if(preview)void decide("reject");else setOpen(false);},busy,'[aria-labelledby="role-dialog-title"]');
-  const valid =
-    answers.length === 5 && answers.every((answer) => count(answer) === 3);
+  useDialogFocus(
+    open,
+    () => {
+      if (preview) void decide("reject");
+      else setOpen(false);
+    },
+    busy,
+    '[aria-labelledby="role-dialog-title"]',
+  );
+  const valid = answers.length === 5 && answers.every((answer) => count(answer) === 3);
 
   async function generate() {
-    if (!valid)
-      return setError("Cada resposta precisa ter exatamente três palavras.");
+    if (!valid) return setError("Cada resposta precisa ter exatamente três palavras.");
     setBusy(true);
     setError("");
     try {
@@ -72,17 +78,12 @@ export default function RoleGenerator({
         body: JSON.stringify({ answers: answers.map(normalize) }),
       });
       const data = (await response.json()) as Preview & { error?: string };
-      if (!response.ok)
-        throw new Error(data.error || "Não foi possível gerar um novo papel.");
+      if (!response.ok) throw new Error(data.error || "Não foi possível gerar um novo papel.");
       setAnswers(answers.map(normalize));
       setPreview(data);
       setRemaining(data.remaining);
     } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "Não foi possível gerar um novo papel.",
-      );
+      setError(caught instanceof Error ? caught.message : "Não foi possível gerar um novo papel.");
     } finally {
       setBusy(false);
     }
@@ -99,15 +100,10 @@ export default function RoleGenerator({
         body: JSON.stringify({ generationId: preview.generationId, action }),
       });
       const data = (await response.json()) as { error?: string };
-      if (!response.ok)
-        throw new Error(data.error || "Não foi possível concluir a escolha.");
+      if (!response.ok) throw new Error(data.error || "Não foi possível concluir a escolha.");
       window.location.reload();
     } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "Não foi possível concluir a escolha.",
-      );
+      setError(caught instanceof Error ? caught.message : "Não foi possível concluir a escolha.");
       setBusy(false);
     }
   }
@@ -124,9 +120,7 @@ export default function RoleGenerator({
           <RefreshCw size={15} />
           Gerar novamente
         </button>
-        <p className="mt-1 text-right text-[11px] text-[#667064]">
-          {remaining} crédito(s)
-        </p>
+        <p className="mt-1 text-right text-[11px] text-[#667064]">{remaining} crédito(s)</p>
       </div>
       {open && (
         <div
@@ -145,9 +139,7 @@ export default function RoleGenerator({
                   revisão de identidade
                 </p>
                 <h2 id="role-dialog-title" className="mt-2 font-serif text-4xl">
-                  {preview
-                    ? "Compare antes de escolher"
-                    : "Gerar um novo papel"}
+                  {preview ? "Compare antes de escolher" : "Gerar um novo papel"}
                 </h2>
               </div>
               <button
@@ -163,8 +155,8 @@ export default function RoleGenerator({
             {!preview ? (
               <>
                 <p className="mt-5 max-w-2xl leading-7 text-[#667064]">
-                  Seu papel nasce das cinco respostas abaixo. Mantenha os mesmos
-                  sinais ou revise-os antes da geração.
+                  Seu papel nasce das cinco respostas abaixo. Mantenha os mesmos sinais ou revise-os
+                  antes da geração.
                 </p>
                 <div className="mt-6 grid gap-3 sm:grid-cols-2">
                   <button
@@ -200,9 +192,7 @@ export default function RoleGenerator({
                         </span>
                         <span
                           className={
-                            count(answers[index] || "") === 3
-                              ? "text-[#244e35]"
-                              : "text-[#9b3a2f]"
+                            count(answers[index] || "") === 3 ? "text-[#244e35]" : "text-[#9b3a2f]"
                           }
                         >
                           {count(answers[index] || "")}/3
@@ -231,8 +221,8 @@ export default function RoleGenerator({
                   ))}
                 </div>
                 <div className="mt-7 border-l-4 border-[#f0c64b] bg-[#fbf8f1] p-4 text-sm leading-6">
-                  <strong>Ordem:</strong> confirme as respostas → use 1 crédito
-                  → compare o novo papel → escolha aplicar ou manter o atual.
+                  <strong>Ordem:</strong> confirme as respostas → use 1 crédito → compare o novo
+                  papel → escolha aplicar ou manter o atual.
                 </div>
                 <button
                   type="button"
@@ -240,11 +230,7 @@ export default function RoleGenerator({
                   disabled={busy || !valid || remaining <= 0}
                   className="mt-6 flex w-full items-center justify-center gap-2 bg-[#244e35] px-5 py-4 font-semibold text-white disabled:opacity-40"
                 >
-                  {busy ? (
-                    <LoaderCircle className="animate-spin" />
-                  ) : (
-                    <Sparkles />
-                  )}{" "}
+                  {busy ? <LoaderCircle className="animate-spin" /> : <Sparkles />}{" "}
                   {busy ? "Inventando…" : "Gerar novo papel — usar 1 crédito"}
                 </button>
               </>
@@ -255,23 +241,15 @@ export default function RoleGenerator({
                     <p className="text-xs font-semibold uppercase tracking-[.16em] text-[#667064]">
                       papel atual
                     </p>
-                    <h3 className="mt-3 font-serif text-2xl text-[#244e35]">
-                      {currentRole}
-                    </h3>
-                    <p className="mt-3 text-sm leading-6 text-[#667064]">
-                      {currentManifesto}
-                    </p>
+                    <h3 className="mt-3 font-serif text-2xl text-[#244e35]">{currentRole}</h3>
+                    <p className="mt-3 text-sm leading-6 text-[#667064]">{currentManifesto}</p>
                   </article>
                   <article className="border-2 border-[#244e35] bg-[#fbf8f1] p-5 shadow-[5px_5px_0_#f0c64b]">
                     <p className="text-xs font-semibold uppercase tracking-[.16em] text-[#667064]">
                       novo papel
                     </p>
-                    <h3 className="mt-3 font-serif text-2xl text-[#244e35]">
-                      {preview.roleTitle}
-                    </h3>
-                    <p className="mt-3 text-sm leading-6 text-[#667064]">
-                      {preview.manifesto}
-                    </p>
+                    <h3 className="mt-3 font-serif text-2xl text-[#244e35]">{preview.roleTitle}</h3>
+                    <p className="mt-3 text-sm leading-6 text-[#667064]">{preview.manifesto}</p>
                   </article>
                 </div>
                 <section className="mt-6 border border-[#c8c0b1] bg-[#ece7dc] p-5">
@@ -281,19 +259,10 @@ export default function RoleGenerator({
                   <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
                     {[
                       ["Causa · o que protege", preview.mapping.causa],
-                      [
-                        "Adversário · o que revolta",
-                        preview.mapping.adversario,
-                      ],
+                      ["Adversário · o que revolta", preview.mapping.adversario],
                       ["Método · talento estranho", preview.mapping.metodo],
-                      [
-                        "Contradição · defeito produtivo",
-                        preview.mapping.contradicao,
-                      ],
-                      [
-                        "Horizonte · mundo procurado",
-                        preview.mapping.horizonte,
-                      ],
+                      ["Contradição · defeito produtivo", preview.mapping.contradicao],
+                      ["Horizonte · mundo procurado", preview.mapping.horizonte],
                     ].map(([label, value]) => (
                       <div key={label}>
                         <dt className="font-semibold">{label}</dt>
@@ -306,8 +275,8 @@ export default function RoleGenerator({
                   </p>
                 </section>
                 <p className="mt-6 text-sm text-[#667064]">
-                  O crédito já foi utilizado para criar esta versão. O papel
-                  atual só muda se você confirmar.
+                  O crédito já foi utilizado para criar esta versão. O papel atual só muda se você
+                  confirmar.
                 </p>
                 <div className="mt-6 grid gap-3 sm:grid-cols-2">
                   <button
@@ -324,12 +293,7 @@ export default function RoleGenerator({
                     disabled={busy}
                     className="flex items-center justify-center gap-2 bg-[#244e35] px-4 py-3 font-semibold text-white disabled:opacity-40"
                   >
-                    {busy ? (
-                      <LoaderCircle className="animate-spin" />
-                    ) : (
-                      <Check />
-                    )}{" "}
-                    Usar novo papel
+                    {busy ? <LoaderCircle className="animate-spin" /> : <Check />} Usar novo papel
                   </button>
                 </div>
               </>

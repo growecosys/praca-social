@@ -42,7 +42,7 @@ export default function AvatarGenerator({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
-  useDialogFocus(open,()=>setOpen(false),busy,'[aria-labelledby="avatar-dialog-title"]');
+  useDialogFocus(open, () => setOpen(false), busy, '[aria-labelledby="avatar-dialog-title"]');
   const finalPrompt = data
     ? `${data.prompt}${direction.trim() ? ` Additional art direction: ${direction.trim()}.` : ""}`
     : "";
@@ -54,15 +54,10 @@ export default function AvatarGenerator({
     try {
       const response = await fetch("/api/profile/avatar");
       const result = await response.json();
-      if (!response.ok)
-        throw new Error(result.error || "Não foi possível montar o prompt.");
+      if (!response.ok) throw new Error(result.error || "Não foi possível montar o prompt.");
       setData(result);
     } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "Não foi possível montar o prompt.",
-      );
+      setError(caught instanceof Error ? caught.message : "Não foi possível montar o prompt.");
     } finally {
       setBusy(false);
     }
@@ -82,15 +77,10 @@ export default function AvatarGenerator({
       try {
         result = JSON.parse(raw);
       } catch {}
-      if (!response.ok)
-        throw new Error(result.error || "Não foi possível gerar a imagem.");
+      if (!response.ok) throw new Error(result.error || "Não foi possível gerar a imagem.");
       window.location.reload();
     } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "Não foi possível gerar a imagem.",
-      );
+      setError(caught instanceof Error ? caught.message : "Não foi possível gerar a imagem.");
       setBusy(false);
     }
   }
@@ -111,9 +101,7 @@ export default function AvatarGenerator({
         <Eye size={17} />
         {hasImage ? "Revisar e gerar nova versão" : "Preparar avatar com IA"}
       </button>
-      <p className="mt-2 text-xs text-[#667064]">
-        {remaining} geração(ões) disponível(is).
-      </p>
+      <p className="mt-2 text-xs text-[#667064]">{remaining} geração(ões) disponível(is).</p>
       {open && (
         <div
           className="fixed inset-0 z-[100] grid place-items-center bg-[#14261b]/70 p-4"
@@ -130,10 +118,7 @@ export default function AvatarGenerator({
                 <p className="text-xs font-semibold uppercase tracking-[.2em] text-[#667064]">
                   transparência da geração
                 </p>
-                <h2
-                  id="avatar-dialog-title"
-                  className="mt-2 font-serif text-4xl"
-                >
+                <h2 id="avatar-dialog-title" className="mt-2 font-serif text-4xl">
                   O que formará seu avatar
                 </h2>
               </div>
@@ -170,9 +155,8 @@ export default function AvatarGenerator({
                   </ol>
                   <p className="mt-5 border-l-4 border-[#244e35] bg-[#e7eee8] p-4 text-sm leading-6">
                     <strong>Base atual:</strong> este avatar será inspirado em
-                    <strong> {data.factors.roleTitle}</strong> e no manifesto
-                    selecionado. Trocar de papel altera automaticamente este
-                    prompt.
+                    <strong> {data.factors.roleTitle}</strong> e no manifesto selecionado. Trocar de
+                    papel altera automaticamente este prompt.
                   </p>
                   <div className="mt-6 grid gap-4 sm:grid-cols-2">
                     <article className="border p-4">
@@ -182,21 +166,15 @@ export default function AvatarGenerator({
                       <dl className="mt-3 space-y-2 text-sm">
                         <div>
                           <dt className="font-semibold">Papel ativo</dt>
-                          <dd className="text-[#667064]">
-                            {data.factors.roleTitle}
-                          </dd>
+                          <dd className="text-[#667064]">{data.factors.roleTitle}</dd>
                         </div>
                         <div>
                           <dt className="font-semibold">Manifesto ativo</dt>
-                          <dd className="text-[#667064]">
-                            {data.factors.manifesto}
-                          </dd>
+                          <dd className="text-[#667064]">{data.factors.manifesto}</dd>
                         </div>
                         <div>
                           <dt className="font-semibold">Símbolo</dt>
-                          <dd className="text-[#667064]">
-                            {data.factors.symbol}
-                          </dd>
+                          <dd className="text-[#667064]">{data.factors.symbol}</dd>
                         </div>
                         <div>
                           <dt className="font-semibold">Cores</dt>
@@ -213,9 +191,7 @@ export default function AvatarGenerator({
                         </div>
                         <div>
                           <dt className="font-semibold">Respostas</dt>
-                          <dd className="text-[#667064]">
-                            {data.factors.answers.join(" · ")}
-                          </dd>
+                          <dd className="text-[#667064]">{data.factors.answers.join(" · ")}</dd>
                         </div>
                       </dl>
                     </article>
@@ -223,12 +199,8 @@ export default function AvatarGenerator({
                       <p className="text-xs font-semibold uppercase tracking-[.14em] text-[#667064]">
                         regras da praça · fixas
                       </p>
-                      <p className="mt-3 text-sm leading-6 text-[#667064]">
-                        {data.factors.style}
-                      </p>
-                      <p className="mt-3 text-sm leading-6 text-[#667064]">
-                        {data.factors.rules}
-                      </p>
+                      <p className="mt-3 text-sm leading-6 text-[#667064]">{data.factors.style}</p>
+                      <p className="mt-3 text-sm leading-6 text-[#667064]">{data.factors.rules}</p>
                       <p className="mt-4 text-xs">
                         {data.settings.model} · {data.settings.size} · qualidade{" "}
                         {data.settings.quality}
@@ -238,15 +210,11 @@ export default function AvatarGenerator({
                   <label className="mt-6 block">
                     <span className="text-sm font-semibold">
                       Direção adicional{" "}
-                      <span className="font-normal text-[#667064]">
-                        (opcional)
-                      </span>
+                      <span className="font-normal text-[#667064]">(opcional)</span>
                     </span>
                     <textarea
                       value={direction}
-                      onChange={(event) =>
-                        setDirection(event.target.value.slice(0, 300))
-                      }
+                      onChange={(event) => setDirection(event.target.value.slice(0, 300))}
                       rows={3}
                       placeholder="Ex.: mais abstrato, menos sombrio, use mais verde…"
                       className="mt-2 w-full resize-y border border-[#b7ae9f] bg-white px-3 py-3 outline-none focus:border-[#244e35]"
@@ -257,9 +225,7 @@ export default function AvatarGenerator({
                   </label>
                   <div className="mt-6">
                     <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-semibold">
-                        Prompt enviado à IA
-                      </p>
+                      <p className="text-sm font-semibold">Prompt enviado à IA</p>
                       <button
                         type="button"
                         onClick={copyPrompt}
@@ -274,8 +240,8 @@ export default function AvatarGenerator({
                     </pre>
                   </div>
                   <p className="mt-5 border-l-4 border-[#f0c64b] bg-[#fbf8f1] p-4 text-sm leading-6">
-                    A geração utilizará 1 crédito. O prompt, as influências e as
-                    configurações serão registrados no histórico de auditoria.
+                    A geração utilizará 1 crédito. O prompt, as influências e as configurações serão
+                    registrados no histórico de auditoria.
                   </p>
                   <button
                     type="button"
@@ -283,11 +249,7 @@ export default function AvatarGenerator({
                     disabled={busy || remaining <= 0}
                     className="mt-5 flex w-full items-center justify-center gap-2 bg-[#244e35] px-5 py-4 font-semibold text-white disabled:opacity-40"
                   >
-                    {busy ? (
-                      <LoaderCircle className="animate-spin" />
-                    ) : (
-                      <ImagePlus />
-                    )}
+                    {busy ? <LoaderCircle className="animate-spin" /> : <ImagePlus />}
                     {busy ? "Gerando imagem…" : "Gerar avatar — usar 1 crédito"}
                   </button>
                 </>

@@ -1,91 +1,804 @@
 "use client";
-import {useEffect,useRef,useState,type ReactNode} from 'react';
-import NaturePlacementEditor,{PlacementPreview} from './nature-placement-editor';
-import {defaultPlacement,readPlacement,validatePlacement,type Placement} from '../lib/nature-placement';
-import {useAutosave} from '../lib/use-autosave';
-import {commonPrompt} from '../lib/common-space';
-import CommonGovernance from './common-governance';
-import CommonSignals from './common-signals';
-import type { VotingDraft } from '../lib/common-signals';
-type Asset={id:string;element:string;url:string;prompt:string;active:number;placement_json?:string;display_name?:string;username?:string};
-type Proposal=Asset&{asset_id:string;kind:string;reason:string;status:string;month_key:string;closes_at:string;yes_live:number;no_live:number;yes_count:number;no_count:number;images:Asset[]};
-type Data={draft?:Asset|null;assets:Asset[];proposals:Proposal[];votes:Array<{proposal_id:string;value:number;username:string;display_name:string}>;calendar:{monthKey:string;canSubmit:boolean;closesAt:string};user:{username:string}|null;available:boolean;generation?:{status:string}};
-function Modal({title,busy=false,onClose,children}:{title:string;busy?:boolean;onClose:()=>void;children:ReactNode}){
- const ref=useRef<HTMLDialogElement>(null);
- useEffect(()=>{ref.current?.showModal();return()=>ref.current?.close();},[]);
- return <dialog ref={ref} onCancel={e=>{e.preventDefault();if(!busy)onClose();}} className="m-auto max-h-[90dvh] w-[min(44rem,calc(100%-2rem))] overflow-y-auto border-0 bg-[#f5f1e8] p-5 text-[#14261b] shadow-xl backdrop:bg-black/50 sm:p-8" aria-label={title}><div className="mb-5 flex items-start justify-between gap-4"><h2 className="font-serif text-3xl">{title}</h2><button disabled={busy} onClick={onClose} aria-label="Fechar" className="px-2 text-2xl disabled:opacity-40">×</button></div>{children}<div className="mt-6 border-t border-[#c8c0b1] pt-4"><button type="button" disabled={busy} onClick={onClose} className="min-h-11 border border-[#bdb5a7] px-5 font-semibold disabled:opacity-40">{busy?"Aguarde a conclusão…":"Fechar / cancelar"}</button></div></dialog>;
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import NaturePlacementEditor, { PlacementPreview } from "./nature-placement-editor";
+import {
+  defaultPlacement,
+  readPlacement,
+  validatePlacement,
+  type Placement,
+} from "../lib/nature-placement";
+import { useAutosave } from "../lib/use-autosave";
+import { commonPrompt } from "../lib/common-space";
+import CommonGovernance from "./common-governance";
+import CommonSignals from "./common-signals";
+import type { VotingDraft } from "../lib/common-signals";
+type Asset = {
+  id: string;
+  element: string;
+  url: string;
+  prompt: string;
+  active: number;
+  placement_json?: string;
+  display_name?: string;
+  username?: string;
+};
+type Proposal = Asset & {
+  asset_id: string;
+  kind: string;
+  reason: string;
+  status: string;
+  month_key: string;
+  closes_at: string;
+  yes_live: number;
+  no_live: number;
+  yes_count: number;
+  no_count: number;
+  images: Asset[];
+};
+type Data = {
+  draft?: Asset | null;
+  assets: Asset[];
+  proposals: Proposal[];
+  votes: Array<{ proposal_id: string; value: number; username: string; display_name: string }>;
+  calendar: { monthKey: string; canSubmit: boolean; closesAt: string };
+  user: { username: string } | null;
+  available: boolean;
+  generation?: { status: string };
+};
+function Modal({
+  title,
+  busy = false,
+  onClose,
+  children,
+}: {
+  title: string;
+  busy?: boolean;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    ref.current?.showModal();
+    return () => ref.current?.close();
+  }, []);
+  return (
+    <dialog
+      ref={ref}
+      onCancel={(e) => {
+        e.preventDefault();
+        if (!busy) onClose();
+      }}
+      className="m-auto max-h-[90dvh] w-[min(44rem,calc(100%-2rem))] overflow-y-auto border-0 bg-[#f5f1e8] p-5 text-[#14261b] shadow-xl backdrop:bg-black/50 sm:p-8"
+      aria-label={title}
+    >
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <h2 className="font-serif text-3xl">{title}</h2>
+        <button
+          disabled={busy}
+          onClick={onClose}
+          aria-label="Fechar"
+          className="px-2 text-2xl disabled:opacity-40"
+        >
+          ×
+        </button>
+      </div>
+      {children}
+      <div className="mt-6 border-t border-[#c8c0b1] pt-4">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onClose}
+          className="min-h-11 border border-[#bdb5a7] px-5 font-semibold disabled:opacity-40"
+        >
+          {busy ? "Aguarde a conclusão…" : "Fechar / cancelar"}
+        </button>
+      </div>
+    </dialog>
+  );
 }
-export default function CommonSpace(){
- const [signalId,setSignalId]=useState<string|null>(null);
- const [draft,setVotingDraft]=useState<VotingDraft>();
- const [draftRevision,setDraftRevision]=useState(0);
- useEffect(()=>{
-  const query=new URLSearchParams(window.location.search);
-  if(query.get("aba")==="sinais"){setSignalId(query.get("sinal"));setTab("signals");}
- },[]);
- const [data,setData]=useState<Data|null>(null),[tab,setTab]=useState('proposals'),[filter,setFilter]=useState('all'),[selecting,setSelecting]=useState(false),[selected,setSelected]=useState<string[]>([]),[preview,setPreview]=useState<Asset|null>(null),[modal,setModal]=useState<'add'|'remove'|null>(null),[element,setElement]=useState(''),[confirmed,setConfirmed]=useState(false),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[error,setError]=useState(''),[reason,setReason]=useState('');
- const [placement,setPlacement]=useState<Placement>(defaultPlacement());
- const [draftId,setDraftId]=useState('');
- useAutosave('praca-common-placement:'+draftId,placement,value=>{try{setPlacement(validatePlacement(value));}catch{}});
- useAutosave('praca-common-element',element,value=>{if(typeof value==='string')setElement(value);});
- const lock=useRef(false);
- useEffect(()=>{if(data?.draft&&data.draft.id!==draftId){setDraftId(data.draft.id);setPlacement(readPlacement(data.draft.placement_json,data.draft.id));}},[data?.draft,draftId]);
- async function refresh(){const r=await fetch('/api/common-space',{cache:'no-store'});if(!r.ok)throw Error('Não foi possível carregar a galeria.');setData(await r.json());}
- useEffect(()=>{refresh().catch(e=>setMessage(e.message));},[]);
- async function act(payload:any){
-  if(lock.current)return;lock.current=true;setBusy(true);setError('');setMessage('');
-  try{const r=await fetch('/api/common-space',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});const raw=await r.text();let result;try{result=JSON.parse(raw);}catch{throw Error('Não foi possível confirmar o resultado. Atualize antes de tentar novamente.');}if(!r.ok)throw Error(result.error);
-   await refresh();if(payload.action!=='generate')setModal(null);setSelected([]);setSelecting(false);setReason('');setConfirmed(false);
-   if(payload.action==='submit'||payload.action==='remove')setTab('proposals');
-   setMessage(payload.action==='generate'?'Imagem gerada. Agora escolha seus lugares e envie a proposta.':payload.action==='submit'?'Sua imagem e seus encaixes entraram na votação.':payload.action==='remove'?'O conjunto de imagens entrou em uma única proposta de retirada.':payload.action==='cancel'?'Proposta retirada.':'Voto registrado. Você pode alterá-lo até o fechamento.');
-  }catch(e){setError(e instanceof Error?e.message:'Tente novamente.');await refresh().catch(()=>{});}finally{setBusy(false);lock.current=false;}
- }
- const imagesOf=(p:Proposal):Asset[]=>p.images?.length?p.images:[{...p,id:p.asset_id}];
- const pendingRemoval=(id:string)=>data?.proposals.some(p=>p.kind==='removal'&&p.status==='open'&&imagesOf(p).some(a=>a.id===id));
- const pendingAddition=(id:string)=>data?.proposals.some(p=>p.kind==='addition'&&p.status==='open'&&p.asset_id===id);
- const badge=(a:Asset)=>pendingRemoval(a.id)?'Retirada em votação':pendingAddition(a.id)?'Inclusão em votação':a.active?'Na rotação':'Inativa';
- const eligible=(a:Asset)=>Boolean(a.active&&!pendingRemoval(a.id));
- const toggle=(id:string)=>setSelected(current=>current.includes(id)?current.filter(x=>x!==id):[...current,id]);
- const chosen=data?.assets.filter(a=>selected.includes(a.id))||[];
- const imageButton=(a:Asset)=> <button key={a.id} type="button" onClick={()=>setPreview(a)} className="min-w-0 rounded border border-[#d8d0c1] bg-white/50 p-2 text-left hover:border-[#244e35]" aria-label={'Ampliar '+a.element}><img src={a.url} alt={a.element} className="aspect-square w-full object-contain"/><span className="mt-2 block text-xs">{a.element}</span></button>;
- function proposalCard(p:Proposal){
-  const items=imagesOf(p),open=p.status==='open';
-  return <article key={p.id} className="space-y-4 border border-[#c8c0b1] bg-[#fbf8f1] p-5"><p className="text-xs font-bold uppercase tracking-widest">{p.kind==='addition'?'Inclusão de imagem':'Retirada de '+items.length+' imagem(ns)'}{!open?' · '+(p.status==='approved'?'Aprovada':p.status==='cancelled'?'Retirada pela autoria':'Não aprovada'):''}</p><div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{items.map(imageButton)}</div><h2 className="font-serif text-2xl">{p.kind==='addition'?p.element:'Retirada do conjunto selecionado'}</h2><p className="text-sm">Proposta por <a href={'/u/'+p.username} className="underline">{p.display_name}</a> · {p.month_key}</p>{p.reason&&<p className="whitespace-pre-wrap text-sm">{p.reason}</p>}{items.length>1&&<p className="border-l-4 border-[#f0c64b] pl-3 text-sm font-bold">O voto vale para todo este conjunto. Se aprovada, todas as {items.length} imagens sairão da rotação.</p>}<p>{open?p.yes_live:p.yes_count} a favor · {open?p.no_live:p.no_count} contra</p>{open&&<p className="text-xs">Até {new Date(p.closes_at).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',dateStyle:'short',timeStyle:'short'})} · Brasília</p>}
-  {open&&data?.user&&<div className="flex gap-3">{[[1,'A favor'],[-1,'Contra']].map(([value,label])=><button key={value} disabled={busy} onClick={()=>act({action:'vote',proposalId:p.id,value})} aria-pressed={data.votes.some(v=>v.proposal_id===p.id&&v.username===data.user?.username&&v.value===value)} className={'border px-4 py-2 disabled:opacity-40 '+(data.votes.some(v=>v.proposal_id===p.id&&v.username===data.user?.username&&v.value===value)?'bg-[#244e35] text-white':'')}>{label}</button>)}</div>}
-  {open&&data?.user?.username===p.username&&<button type="button" disabled={busy} className="border border-[#c8c0b1] px-4 py-2 text-sm disabled:opacity-40" onClick={()=>{if(window.confirm('Retirar sua proposta desta votação? Os votos registrados ficam no histórico.'))act({action:'cancel',proposalId:p.id});}}>Retirar minha proposta</button>}
-  {p.kind==='addition'&&<details className="text-sm"><summary>Encaixes propostos</summary><div className="mt-3 grid grid-cols-2 gap-3">{readPlacement(p.placement_json,p.asset_id).spots.map(spot=><PlacementPreview key={spot} url={p.url} placement={readPlacement(p.placement_json,p.asset_id)} spot={spot}/>)}</div></details>}<details className="text-sm"><summary>Votos públicos</summary>{data?.votes.filter(v=>v.proposal_id===p.id).map(v=><p key={v.username} className="mt-2"><a href={'/u/'+v.username}>{v.display_name}</a> · {v.value===1?'a favor':'contra'}</p>)}</details></article>;
- }
- return <div className="space-y-7">
- <nav aria-label="Espaço Comum" className="flex flex-wrap gap-3">{[['proposals','Votações'],['signals','Sinais'],['governance','Pedidos de abertura'],['decisions','Decisões'],['images','Acervo de imagens']].map(([id,label])=><button key={id} onClick={()=>{if(id==='signals')setSignalId(null);setTab(id);}} aria-pressed={tab===id} className={'border px-5 py-3 '+(tab===id?'bg-[#244e35] text-white':'border-[#c8c0b1]')}>{label}</button>)}</nav>
- <div hidden={tab!=='governance'}><CommonGovernance key={draftRevision} draft={draft}/></div>
- {tab==='signals'&&<CommonSignals key={signalId??'list'} id={signalId} onDraft={value=>{setVotingDraft(value);setDraftRevision(current=>current+1);setTab('governance');}}/>}
- {tab!=='signals'&&tab!=='governance'&&message&&<p role="status" className="border-l-4 border-[#244e35] p-4">{message}</p>}{tab!=='signals'&&tab!=='governance'&&error&&!modal&&<p role="alert" className="border-l-4 border-[#df5c45] p-4">{error}</p>}{tab!=='signals'&&tab!=='governance'&&!data&&!message&&<p>Carregando a ambientação…</p>}
- {data&&tab==='images'&&<><div className="flex flex-wrap items-center gap-3"><button onClick={()=>{setError('');setModal('add');}} className="bg-[#f0c64b] px-5 py-3 font-bold">{data.draft?'Continuar imagem gerada':'＋ Adicionar nova imagem'}</button><button disabled={!data.user||!data.calendar.canSubmit} onClick={()=>{setSelecting(!selecting);setSelected([]);}} className="border border-[#244e35] px-4 py-3 text-sm disabled:opacity-40">{selecting?'Cancelar seleção':'Selecionar imagens'}</button><label className="ml-auto text-sm">Mostrar <select value={filter} onChange={e=>setFilter(e.target.value)} className="ml-2 border bg-[#fbf8f1] p-2"><option value="all">Todas</option><option value="active">Na rotação</option><option value="pending">Em votação</option><option value="inactive">Inativas</option></select></label></div>
- {!data.user&&<p className="text-sm"><a href="/entrar" className="underline">Entre e conclua seu perfil</a> para propor ou votar.</p>}{!data.calendar.canSubmit&&<p className="text-sm">O envio de propostas reabre no dia 1 do próximo mês.</p>}
- {selecting&&<p className="text-sm">Selecione imagens ativas sem pedido de retirada em votação. A comunidade votará uma única vez sobre todo o conjunto.</p>}
- <div className="columns-2 gap-4 md:columns-3 lg:columns-4">{data.assets.filter(a=>filter==='all'||filter==='active'&&a.active||filter==='pending'&&(pendingAddition(a.id)||pendingRemoval(a.id))||filter==='inactive'&&!a.active&&!pendingAddition(a.id)).map((a,index)=><article key={a.id} className={'mb-4 break-inside-avoid border bg-[#fbf8f1] p-3 transition '+(selected.includes(a.id)?'border-[#244e35] ring-2 ring-[#244e35]':'border-[#d8d0c1]')}><button type="button" onClick={()=>selecting&&eligible(a)?toggle(a.id):setPreview(a)} className="block w-full" aria-label={(selecting&&eligible(a)?'Selecionar ':'Ampliar ')+a.element}><img src={a.url} alt={a.element} loading="lazy" className={'w-full object-contain '+(index%3===0?'aspect-[4/5]':'aspect-square')}/></button><p className="mt-3 text-sm font-bold">{a.element}</p><p className="mt-1 text-xs text-[#667064]">{badge(a)}</p>{selecting&&eligible(a)&&<label className="mt-3 flex items-center gap-2 text-sm"><input type="checkbox" checked={selected.includes(a.id)} onChange={()=>toggle(a.id)}/>Selecionar</label>}</article>)}</div>
- {selecting&&<div className="sticky bottom-4 z-20 flex flex-wrap items-center gap-3 border-2 border-[#244e35] bg-[#f5f1e8] p-4 shadow-lg"><strong>{selected.length} selecionada(s)</strong><button disabled={!selected.length||busy} onClick={()=>{setError('');setModal('remove');}} className="ml-auto bg-[#244e35] px-4 py-3 text-sm font-bold text-white disabled:opacity-40">Propor retirada de {selected.length} imagem(ns)</button><button onClick={()=>setSelected([])} className="p-2 text-sm">Limpar</button></div>}</>}
- {tab==='proposals'&&<section aria-labelledby="votacoes-ativas" className="space-y-5">
-  <h2 id="votacoes-ativas" className="font-serif text-3xl">Votações em andamento</h2>
-  <article className="grid gap-5 border border-[#c8c0b1] bg-[#fbf8f1] p-5 sm:p-7 lg:grid-cols-[1fr_auto] lg:items-center">
-   <div>
-    {data&&<p className="mb-2 text-sm font-semibold text-[#244e35]">Aberta <span className="font-normal text-[#465347]">· encerra em <time dateTime={data.calendar.closesAt}>{new Date(data.calendar.closesAt).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',dateStyle:'short',timeStyle:'short'})}</time> (Brasília)</span></p>}
-    <h3 className="font-serif text-3xl">Ambientação da Praça</h3>
-    <p className="mt-2 leading-7 text-[#465347]">Escolha quais imagens entram ou saem da decoração.</p>
-   </div>
-   <button type="button" onClick={()=>setTab('images')} className="justify-self-start border border-[#244e35] px-4 py-3 text-sm font-semibold">Ver acervo</button>
-  </article>
-  {data&&<>
-   <h3 className="font-serif text-2xl">Propostas da ambientação</h3>
-   <p className="text-sm">{data.calendar.canSubmit?'Envio de propostas até o dia 15.':'O envio de propostas deste mês encerrou.'}</p>
-   <div className="grid gap-6 md:grid-cols-2">{data.proposals.filter(p=>p.status==='open').map(proposalCard)}</div>
-   {!data.proposals.some(p=>p.status==='open')&&<p>Nenhuma proposta em votação neste ciclo.</p>}
-  </>}
- </section>}
- {data&&tab==='decisions'&&<><h2 className="font-serif text-3xl">Decisões sobre a ambientação</h2><div className="grid gap-6 md:grid-cols-2">{data.proposals.filter(p=>p.status!=='open').map(proposalCard)}</div>{!data.proposals.some(p=>p.status!=='open')&&<p>Nenhuma decisão de ambientação registrada.</p>}</>}
- {tab!=='signals'&&tab!=='governance'&&<details className="border-t border-[#d8d0c1] pt-5 text-sm"><summary className="cursor-pointer font-bold">Regras da votação de ambientação</summary><p className="mt-3 leading-7">Inclusões e retiradas podem ser propostas até o dia 15. Cada conta com perfil concluído tem um voto por proposta e pode mudá-lo até o fim do mês, pelo horário de Brasília. Mais votos favoráveis que contrários aprova. Empates mantêm o estado atual. A retirada desativa as imagens; registros e arquivos permanecem públicos.</p></details>}
- {preview&&<Modal title={preview.element} onClose={()=>setPreview(null)}><img src={preview.url} alt={preview.element} className="max-h-[50dvh] w-full object-contain"/><details className="mt-4 text-sm"><summary>Onde esta imagem pode aparecer</summary><div className="mt-3 grid grid-cols-2 gap-3">{readPlacement(preview.placement_json,preview.id).spots.map(spot=><PlacementPreview key={spot} url={preview.url} placement={readPlacement(preview.placement_json,preview.id)} spot={spot}/>)}</div></details><p className="mt-4 text-sm">{badge(preview)} · {preview.display_name||'Acervo da Praça'}</p>{preview.username&&<a href={'/u/'+preview.username} className="mt-2 block text-sm underline">@{preview.username}</a>}<details className="mt-4 text-sm"><summary>Prompt utilizado</summary><p className="mt-3 whitespace-pre-wrap break-words">{preview.prompt}</p></details>{data?.user&&data.calendar.canSubmit&&eligible(preview)&&<button onClick={()=>{setSelected([preview.id]);setSelecting(true);setPreview(null);setModal('remove');setError('');}} className="mt-5 border border-[#244e35] px-4 py-3">Propor retirada</button>}</Modal>}
- {modal==='add'&&data&&<Modal title="Adicionar nova imagem" busy={busy} onClose={()=>setModal(null)}><div className="space-y-4"><p className="text-sm">Escolha somente um elemento da natureza brasileira ou tropical. A Praça mantém o padrão realista, cores naturais e fundo transparente. Depois da geração, você escolhe os encaixes nas prévias e envia a proposta à votação.</p><p className="text-sm">Uma geração por pessoa por mês, separada dos avatares e dos posts. Propostas: dias 1 a 15. Votação: até o fim do mês.</p>{!data.user?<a href="/entrar" className="block underline">Entre para participar</a>:data.draft?<><p className="text-sm font-semibold">Etapa 2 de 2 · {data.draft.element}</p><NaturePlacementEditor url={data.draft.url} value={placement} onChange={setPlacement} disabled={busy}/><p className="text-sm">A geração já está salva. Ajustar e enviar estes encaixes não gasta outra geração.</p><button disabled={busy||!placement.spots.length||!data.calendar.canSubmit} onClick={()=>act({action:'submit',assetId:data.draft!.id,placement})} className="bg-[#244e35] px-5 py-3 text-white disabled:opacity-40">{busy?'Enviando…':'Enviar imagem e encaixes à votação'}</button>{!data.calendar.canSubmit&&<p className="text-sm">Sua imagem está salva. O envio reabre no dia 1.</p>}</>:<><label className="block">Elemento natural<input maxLength={60} value={element} disabled={busy||!data.available||!data.calendar.canSubmit} onChange={e=>{setElement(e.target.value);setConfirmed(false);}} placeholder="Ex.: jabuticaba, arara-canindé" className="mt-2 block w-full border bg-white p-3"/></label><details className="text-sm"><summary>Ver padrão e prompt fixo</summary><p className="mt-3 whitespace-pre-wrap break-words">{commonPrompt(element.trim()||'[elemento escolhido]')}</p></details><label className="flex gap-3 text-sm"><input type="checkbox" checked={confirmed} disabled={busy||!data.available||!data.calendar.canSubmit} onChange={e=>setConfirmed(e.target.checked)}/>Confirmo o elemento e autorizo usar minha geração mensal.</label><button disabled={busy||!confirmed||element.trim().length<3||!data.available||!data.calendar.canSubmit} onClick={()=>act({action:'generate',element,confirmed:true})} className="bg-[#244e35] px-5 py-3 text-white disabled:opacity-40">{busy?'Gerando… aguarde':'Gerar imagem · depois escolher encaixes'}</button>{!data.available&&<p className="text-sm">Sua geração deste mês já foi usada ou está em processamento.</p>}{!data.calendar.canSubmit&&<p className="text-sm">Novas propostas abrem no dia 1 do próximo mês.</p>}</>}{error&&<p role="alert" className="text-sm text-red-800">{error}</p>}</div></Modal>}
- {modal==='remove'&&data&&<Modal title="Revisar proposta de retirada" busy={busy} onClose={()=>setModal(null)}><div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{chosen.map(a=><div key={a.id}><img src={a.url} alt={a.element} className="aspect-square w-full object-contain"/><p className="text-xs">{a.element}</p><button disabled={busy} onClick={()=>toggle(a.id)} className="mt-1 text-xs underline">Tirar da seleção</button></div>)}</div><p className="mt-5 text-sm font-bold">Uma única proposta, com um voto para todo o conjunto de {chosen.length} imagens. Elas continuam ativas até uma eventual aprovação no fim do mês.</p><label className="mt-4 block">Por que retirar estas imagens?<textarea value={reason} disabled={busy} onChange={e=>setReason(e.target.value)} maxLength={500} className="mt-2 min-h-24 w-full border bg-white p-3"/></label><button disabled={busy||!chosen.length||reason.trim().length<5} onClick={()=>act({action:'remove',assetIds:selected,reason})} className="mt-4 bg-[#244e35] px-5 py-3 text-white disabled:opacity-40">{busy?'Enviando…':'Submeter conjunto à votação'}</button>{error&&<p role="alert" className="mt-3 text-sm text-red-800">{error}</p>}</Modal>}
- </div>;
+export default function CommonSpace() {
+  const [signalId, setSignalId] = useState<string | null>(null);
+  const [draft, setVotingDraft] = useState<VotingDraft>();
+  const [draftRevision, setDraftRevision] = useState(0);
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    if (query.get("aba") === "sinais") {
+      setSignalId(query.get("sinal"));
+      setTab("signals");
+    }
+  }, []);
+  const [data, setData] = useState<Data | null>(null),
+    [tab, setTab] = useState("proposals"),
+    [filter, setFilter] = useState("all"),
+    [selecting, setSelecting] = useState(false),
+    [selected, setSelected] = useState<string[]>([]),
+    [preview, setPreview] = useState<Asset | null>(null),
+    [modal, setModal] = useState<"add" | "remove" | null>(null),
+    [element, setElement] = useState(""),
+    [confirmed, setConfirmed] = useState(false),
+    [busy, setBusy] = useState(false),
+    [message, setMessage] = useState(""),
+    [error, setError] = useState(""),
+    [reason, setReason] = useState("");
+  const [placement, setPlacement] = useState<Placement>(defaultPlacement());
+  const [draftId, setDraftId] = useState("");
+  useAutosave("praca-common-placement:" + draftId, placement, (value) => {
+    try {
+      setPlacement(validatePlacement(value));
+    } catch {}
+  });
+  useAutosave("praca-common-element", element, (value) => {
+    if (typeof value === "string") setElement(value);
+  });
+  const lock = useRef(false);
+  useEffect(() => {
+    if (data?.draft && data.draft.id !== draftId) {
+      setDraftId(data.draft.id);
+      setPlacement(readPlacement(data.draft.placement_json, data.draft.id));
+    }
+  }, [data?.draft, draftId]);
+  async function refresh() {
+    const r = await fetch("/api/common-space", { cache: "no-store" });
+    if (!r.ok) throw Error("Não foi possível carregar a galeria.");
+    setData(await r.json());
+  }
+  useEffect(() => {
+    refresh().catch((e) => setMessage(e.message));
+  }, []);
+  async function act(payload: any) {
+    if (lock.current) return;
+    lock.current = true;
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const r = await fetch("/api/common-space", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const raw = await r.text();
+      let result;
+      try {
+        result = JSON.parse(raw);
+      } catch {
+        throw Error("Não foi possível confirmar o resultado. Atualize antes de tentar novamente.");
+      }
+      if (!r.ok) throw Error(result.error);
+      await refresh();
+      if (payload.action !== "generate") setModal(null);
+      setSelected([]);
+      setSelecting(false);
+      setReason("");
+      setConfirmed(false);
+      if (payload.action === "submit" || payload.action === "remove") setTab("proposals");
+      setMessage(
+        payload.action === "generate"
+          ? "Imagem gerada. Agora escolha seus lugares e envie a proposta."
+          : payload.action === "submit"
+            ? "Sua imagem e seus encaixes entraram na votação."
+            : payload.action === "remove"
+              ? "O conjunto de imagens entrou em uma única proposta de retirada."
+              : payload.action === "cancel"
+                ? "Proposta retirada."
+                : "Voto registrado. Você pode alterá-lo até o fechamento.",
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Tente novamente.");
+      await refresh().catch(() => {});
+    } finally {
+      setBusy(false);
+      lock.current = false;
+    }
+  }
+  const imagesOf = (p: Proposal): Asset[] =>
+    p.images?.length ? p.images : [{ ...p, id: p.asset_id }];
+  const pendingRemoval = (id: string) =>
+    data?.proposals.some(
+      (p) => p.kind === "removal" && p.status === "open" && imagesOf(p).some((a) => a.id === id),
+    );
+  const pendingAddition = (id: string) =>
+    data?.proposals.some((p) => p.kind === "addition" && p.status === "open" && p.asset_id === id);
+  const badge = (a: Asset) =>
+    pendingRemoval(a.id)
+      ? "Retirada em votação"
+      : pendingAddition(a.id)
+        ? "Inclusão em votação"
+        : a.active
+          ? "Na rotação"
+          : "Inativa";
+  const eligible = (a: Asset) => Boolean(a.active && !pendingRemoval(a.id));
+  const toggle = (id: string) =>
+    setSelected((current) =>
+      current.includes(id) ? current.filter((x) => x !== id) : [...current, id],
+    );
+  const chosen = data?.assets.filter((a) => selected.includes(a.id)) || [];
+  const imageButton = (a: Asset) => (
+    <button
+      key={a.id}
+      type="button"
+      onClick={() => setPreview(a)}
+      className="min-w-0 rounded border border-[#d8d0c1] bg-white/50 p-2 text-left hover:border-[#244e35]"
+      aria-label={"Ampliar " + a.element}
+    >
+      <img src={a.url} alt={a.element} className="aspect-square w-full object-contain" />
+      <span className="mt-2 block text-xs">{a.element}</span>
+    </button>
+  );
+  function proposalCard(p: Proposal) {
+    const items = imagesOf(p),
+      open = p.status === "open";
+    return (
+      <article key={p.id} className="space-y-4 border border-[#c8c0b1] bg-[#fbf8f1] p-5">
+        <p className="text-xs font-bold uppercase tracking-widest">
+          {p.kind === "addition"
+            ? "Inclusão de imagem"
+            : "Retirada de " + items.length + " imagem(ns)"}
+          {!open
+            ? " · " +
+              (p.status === "approved"
+                ? "Aprovada"
+                : p.status === "cancelled"
+                  ? "Retirada pela autoria"
+                  : "Não aprovada")
+            : ""}
+        </p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{items.map(imageButton)}</div>
+        <h2 className="font-serif text-2xl">
+          {p.kind === "addition" ? p.element : "Retirada do conjunto selecionado"}
+        </h2>
+        <p className="text-sm">
+          Proposta por{" "}
+          <a href={"/u/" + p.username} className="underline">
+            {p.display_name}
+          </a>{" "}
+          · {p.month_key}
+        </p>
+        {p.reason && <p className="whitespace-pre-wrap text-sm">{p.reason}</p>}
+        {items.length > 1 && (
+          <p className="border-l-4 border-[#f0c64b] pl-3 text-sm font-bold">
+            O voto vale para todo este conjunto. Se aprovada, todas as {items.length} imagens sairão
+            da rotação.
+          </p>
+        )}
+        <p>
+          {open ? p.yes_live : p.yes_count} a favor · {open ? p.no_live : p.no_count} contra
+        </p>
+        {open && (
+          <p className="text-xs">
+            Até{" "}
+            {new Date(p.closes_at).toLocaleString("pt-BR", {
+              timeZone: "America/Sao_Paulo",
+              dateStyle: "short",
+              timeStyle: "short",
+            })}{" "}
+            · Brasília
+          </p>
+        )}
+        {open && data?.user && (
+          <div className="flex gap-3">
+            {[
+              [1, "A favor"],
+              [-1, "Contra"],
+            ].map(([value, label]) => (
+              <button
+                key={value}
+                disabled={busy}
+                onClick={() => act({ action: "vote", proposalId: p.id, value })}
+                aria-pressed={data.votes.some(
+                  (v) =>
+                    v.proposal_id === p.id &&
+                    v.username === data.user?.username &&
+                    v.value === value,
+                )}
+                className={
+                  "border px-4 py-2 disabled:opacity-40 " +
+                  (data.votes.some(
+                    (v) =>
+                      v.proposal_id === p.id &&
+                      v.username === data.user?.username &&
+                      v.value === value,
+                  )
+                    ? "bg-[#244e35] text-white"
+                    : "")
+                }
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+        {open && data?.user?.username === p.username && (
+          <button
+            type="button"
+            disabled={busy}
+            className="border border-[#c8c0b1] px-4 py-2 text-sm disabled:opacity-40"
+            onClick={() => {
+              if (
+                window.confirm(
+                  "Retirar sua proposta desta votação? Os votos registrados ficam no histórico.",
+                )
+              )
+                act({ action: "cancel", proposalId: p.id });
+            }}
+          >
+            Retirar minha proposta
+          </button>
+        )}
+        {p.kind === "addition" && (
+          <details className="text-sm">
+            <summary>Encaixes propostos</summary>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              {readPlacement(p.placement_json, p.asset_id).spots.map((spot) => (
+                <PlacementPreview
+                  key={spot}
+                  url={p.url}
+                  placement={readPlacement(p.placement_json, p.asset_id)}
+                  spot={spot}
+                />
+              ))}
+            </div>
+          </details>
+        )}
+        <details className="text-sm">
+          <summary>Votos públicos</summary>
+          {data?.votes
+            .filter((v) => v.proposal_id === p.id)
+            .map((v) => (
+              <p key={v.username} className="mt-2">
+                <a href={"/u/" + v.username}>{v.display_name}</a> ·{" "}
+                {v.value === 1 ? "a favor" : "contra"}
+              </p>
+            ))}
+        </details>
+      </article>
+    );
+  }
+  return (
+    <div className="space-y-7">
+      <nav aria-label="Espaço Comum" className="flex flex-wrap gap-3">
+        {[
+          ["proposals", "Votações"],
+          ["signals", "Sinais"],
+          ["governance", "Pedidos de abertura"],
+          ["decisions", "Decisões"],
+          ["images", "Acervo de imagens"],
+        ].map(([id, label]) => (
+          <button
+            key={id}
+            onClick={() => {
+              if (id === "signals") setSignalId(null);
+              setTab(id);
+            }}
+            aria-pressed={tab === id}
+            className={
+              "border px-5 py-3 " + (tab === id ? "bg-[#244e35] text-white" : "border-[#c8c0b1]")
+            }
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
+      <div hidden={tab !== "governance"}>
+        <CommonGovernance key={draftRevision} draft={draft} />
+      </div>
+      {tab === "signals" && (
+        <CommonSignals
+          key={signalId ?? "list"}
+          id={signalId}
+          onDraft={(value) => {
+            setVotingDraft(value);
+            setDraftRevision((current) => current + 1);
+            setTab("governance");
+          }}
+        />
+      )}
+      {tab !== "signals" && tab !== "governance" && message && (
+        <p role="status" className="border-l-4 border-[#244e35] p-4">
+          {message}
+        </p>
+      )}
+      {tab !== "signals" && tab !== "governance" && error && !modal && (
+        <p role="alert" className="border-l-4 border-[#df5c45] p-4">
+          {error}
+        </p>
+      )}
+      {tab !== "signals" && tab !== "governance" && !data && !message && (
+        <p>Carregando a ambientação…</p>
+      )}
+      {data && tab === "images" && (
+        <>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => {
+                setError("");
+                setModal("add");
+              }}
+              className="bg-[#f0c64b] px-5 py-3 font-bold"
+            >
+              {data.draft ? "Continuar imagem gerada" : "＋ Adicionar nova imagem"}
+            </button>
+            <button
+              disabled={!data.user || !data.calendar.canSubmit}
+              onClick={() => {
+                setSelecting(!selecting);
+                setSelected([]);
+              }}
+              className="border border-[#244e35] px-4 py-3 text-sm disabled:opacity-40"
+            >
+              {selecting ? "Cancelar seleção" : "Selecionar imagens"}
+            </button>
+            <label className="ml-auto text-sm">
+              Mostrar{" "}
+              <select
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                className="ml-2 border bg-[#fbf8f1] p-2"
+              >
+                <option value="all">Todas</option>
+                <option value="active">Na rotação</option>
+                <option value="pending">Em votação</option>
+                <option value="inactive">Inativas</option>
+              </select>
+            </label>
+          </div>
+          {!data.user && (
+            <p className="text-sm">
+              <a href="/entrar" className="underline">
+                Entre e conclua seu perfil
+              </a>{" "}
+              para propor ou votar.
+            </p>
+          )}
+          {!data.calendar.canSubmit && (
+            <p className="text-sm">O envio de propostas reabre no dia 1 do próximo mês.</p>
+          )}
+          {selecting && (
+            <p className="text-sm">
+              Selecione imagens ativas sem pedido de retirada em votação. A comunidade votará uma
+              única vez sobre todo o conjunto.
+            </p>
+          )}
+          <div className="columns-2 gap-4 md:columns-3 lg:columns-4">
+            {data.assets
+              .filter(
+                (a) =>
+                  filter === "all" ||
+                  (filter === "active" && a.active) ||
+                  (filter === "pending" && (pendingAddition(a.id) || pendingRemoval(a.id))) ||
+                  (filter === "inactive" && !a.active && !pendingAddition(a.id)),
+              )
+              .map((a, index) => (
+                <article
+                  key={a.id}
+                  className={
+                    "mb-4 break-inside-avoid border bg-[#fbf8f1] p-3 transition " +
+                    (selected.includes(a.id)
+                      ? "border-[#244e35] ring-2 ring-[#244e35]"
+                      : "border-[#d8d0c1]")
+                  }
+                >
+                  <button
+                    type="button"
+                    onClick={() => (selecting && eligible(a) ? toggle(a.id) : setPreview(a))}
+                    className="block w-full"
+                    aria-label={(selecting && eligible(a) ? "Selecionar " : "Ampliar ") + a.element}
+                  >
+                    <img
+                      src={a.url}
+                      alt={a.element}
+                      loading="lazy"
+                      className={
+                        "w-full object-contain " +
+                        (index % 3 === 0 ? "aspect-[4/5]" : "aspect-square")
+                      }
+                    />
+                  </button>
+                  <p className="mt-3 text-sm font-bold">{a.element}</p>
+                  <p className="mt-1 text-xs text-[#667064]">{badge(a)}</p>
+                  {selecting && eligible(a) && (
+                    <label className="mt-3 flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={selected.includes(a.id)}
+                        onChange={() => toggle(a.id)}
+                      />
+                      Selecionar
+                    </label>
+                  )}
+                </article>
+              ))}
+          </div>
+          {selecting && (
+            <div className="sticky bottom-4 z-20 flex flex-wrap items-center gap-3 border-2 border-[#244e35] bg-[#f5f1e8] p-4 shadow-lg">
+              <strong>{selected.length} selecionada(s)</strong>
+              <button
+                disabled={!selected.length || busy}
+                onClick={() => {
+                  setError("");
+                  setModal("remove");
+                }}
+                className="ml-auto bg-[#244e35] px-4 py-3 text-sm font-bold text-white disabled:opacity-40"
+              >
+                Propor retirada de {selected.length} imagem(ns)
+              </button>
+              <button onClick={() => setSelected([])} className="p-2 text-sm">
+                Limpar
+              </button>
+            </div>
+          )}
+        </>
+      )}
+      {tab === "proposals" && (
+        <section aria-labelledby="votacoes-ativas" className="space-y-5">
+          <h2 id="votacoes-ativas" className="font-serif text-3xl">
+            Votações em andamento
+          </h2>
+          <article className="grid gap-5 border border-[#c8c0b1] bg-[#fbf8f1] p-5 sm:p-7 lg:grid-cols-[1fr_auto] lg:items-center">
+            <div>
+              {data && (
+                <p className="mb-2 text-sm font-semibold text-[#244e35]">
+                  Aberta{" "}
+                  <span className="font-normal text-[#465347]">
+                    · encerra em{" "}
+                    <time dateTime={data.calendar.closesAt}>
+                      {new Date(data.calendar.closesAt).toLocaleString("pt-BR", {
+                        timeZone: "America/Sao_Paulo",
+                        dateStyle: "short",
+                        timeStyle: "short",
+                      })}
+                    </time>{" "}
+                    (Brasília)
+                  </span>
+                </p>
+              )}
+              <h3 className="font-serif text-3xl">Ambientação da Praça</h3>
+              <p className="mt-2 leading-7 text-[#465347]">
+                Escolha quais imagens entram ou saem da decoração.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setTab("images")}
+              className="justify-self-start border border-[#244e35] px-4 py-3 text-sm font-semibold"
+            >
+              Ver acervo
+            </button>
+          </article>
+          {data && (
+            <>
+              <h3 className="font-serif text-2xl">Propostas da ambientação</h3>
+              <p className="text-sm">
+                {data.calendar.canSubmit
+                  ? "Envio de propostas até o dia 15."
+                  : "O envio de propostas deste mês encerrou."}
+              </p>
+              <div className="grid gap-6 md:grid-cols-2">
+                {data.proposals.filter((p) => p.status === "open").map(proposalCard)}
+              </div>
+              {!data.proposals.some((p) => p.status === "open") && (
+                <p>Nenhuma proposta em votação neste ciclo.</p>
+              )}
+            </>
+          )}
+        </section>
+      )}
+      {data && tab === "decisions" && (
+        <>
+          <h2 className="font-serif text-3xl">Decisões sobre a ambientação</h2>
+          <div className="grid gap-6 md:grid-cols-2">
+            {data.proposals.filter((p) => p.status !== "open").map(proposalCard)}
+          </div>
+          {!data.proposals.some((p) => p.status !== "open") && (
+            <p>Nenhuma decisão de ambientação registrada.</p>
+          )}
+        </>
+      )}
+      {tab !== "signals" && tab !== "governance" && (
+        <details className="border-t border-[#d8d0c1] pt-5 text-sm">
+          <summary className="cursor-pointer font-bold">Regras da votação de ambientação</summary>
+          <p className="mt-3 leading-7">
+            Inclusões e retiradas podem ser propostas até o dia 15. Cada conta com perfil concluído
+            tem um voto por proposta e pode mudá-lo até o fim do mês, pelo horário de Brasília. Mais
+            votos favoráveis que contrários aprova. Empates mantêm o estado atual. A retirada
+            desativa as imagens; registros e arquivos permanecem públicos.
+          </p>
+        </details>
+      )}
+      {preview && (
+        <Modal title={preview.element} onClose={() => setPreview(null)}>
+          <img
+            src={preview.url}
+            alt={preview.element}
+            className="max-h-[50dvh] w-full object-contain"
+          />
+          <details className="mt-4 text-sm">
+            <summary>Onde esta imagem pode aparecer</summary>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              {readPlacement(preview.placement_json, preview.id).spots.map((spot) => (
+                <PlacementPreview
+                  key={spot}
+                  url={preview.url}
+                  placement={readPlacement(preview.placement_json, preview.id)}
+                  spot={spot}
+                />
+              ))}
+            </div>
+          </details>
+          <p className="mt-4 text-sm">
+            {badge(preview)} · {preview.display_name || "Acervo da Praça"}
+          </p>
+          {preview.username && (
+            <a href={"/u/" + preview.username} className="mt-2 block text-sm underline">
+              @{preview.username}
+            </a>
+          )}
+          <details className="mt-4 text-sm">
+            <summary>Prompt utilizado</summary>
+            <p className="mt-3 whitespace-pre-wrap break-words">{preview.prompt}</p>
+          </details>
+          {data?.user && data.calendar.canSubmit && eligible(preview) && (
+            <button
+              onClick={() => {
+                setSelected([preview.id]);
+                setSelecting(true);
+                setPreview(null);
+                setModal("remove");
+                setError("");
+              }}
+              className="mt-5 border border-[#244e35] px-4 py-3"
+            >
+              Propor retirada
+            </button>
+          )}
+        </Modal>
+      )}
+      {modal === "add" && data && (
+        <Modal title="Adicionar nova imagem" busy={busy} onClose={() => setModal(null)}>
+          <div className="space-y-4">
+            <p className="text-sm">
+              Escolha somente um elemento da natureza brasileira ou tropical. A Praça mantém o
+              padrão realista, cores naturais e fundo transparente. Depois da geração, você escolhe
+              os encaixes nas prévias e envia a proposta à votação.
+            </p>
+            <p className="text-sm">
+              Uma geração por pessoa por mês, separada dos avatares e dos posts. Propostas: dias 1 a
+              15. Votação: até o fim do mês.
+            </p>
+            {!data.user ? (
+              <a href="/entrar" className="block underline">
+                Entre para participar
+              </a>
+            ) : data.draft ? (
+              <>
+                <p className="text-sm font-semibold">Etapa 2 de 2 · {data.draft.element}</p>
+                <NaturePlacementEditor
+                  url={data.draft.url}
+                  value={placement}
+                  onChange={setPlacement}
+                  disabled={busy}
+                />
+                <p className="text-sm">
+                  A geração já está salva. Ajustar e enviar estes encaixes não gasta outra geração.
+                </p>
+                <button
+                  disabled={busy || !placement.spots.length || !data.calendar.canSubmit}
+                  onClick={() => act({ action: "submit", assetId: data.draft!.id, placement })}
+                  className="bg-[#244e35] px-5 py-3 text-white disabled:opacity-40"
+                >
+                  {busy ? "Enviando…" : "Enviar imagem e encaixes à votação"}
+                </button>
+                {!data.calendar.canSubmit && (
+                  <p className="text-sm">Sua imagem está salva. O envio reabre no dia 1.</p>
+                )}
+              </>
+            ) : (
+              <>
+                <label className="block">
+                  Elemento natural
+                  <input
+                    maxLength={60}
+                    value={element}
+                    disabled={busy || !data.available || !data.calendar.canSubmit}
+                    onChange={(e) => {
+                      setElement(e.target.value);
+                      setConfirmed(false);
+                    }}
+                    placeholder="Ex.: jabuticaba, arara-canindé"
+                    className="mt-2 block w-full border bg-white p-3"
+                  />
+                </label>
+                <details className="text-sm">
+                  <summary>Ver padrão e prompt fixo</summary>
+                  <p className="mt-3 whitespace-pre-wrap break-words">
+                    {commonPrompt(element.trim() || "[elemento escolhido]")}
+                  </p>
+                </details>
+                <label className="flex gap-3 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={confirmed}
+                    disabled={busy || !data.available || !data.calendar.canSubmit}
+                    onChange={(e) => setConfirmed(e.target.checked)}
+                  />
+                  Confirmo o elemento e autorizo usar minha geração mensal.
+                </label>
+                <button
+                  disabled={
+                    busy ||
+                    !confirmed ||
+                    element.trim().length < 3 ||
+                    !data.available ||
+                    !data.calendar.canSubmit
+                  }
+                  onClick={() => act({ action: "generate", element, confirmed: true })}
+                  className="bg-[#244e35] px-5 py-3 text-white disabled:opacity-40"
+                >
+                  {busy ? "Gerando… aguarde" : "Gerar imagem · depois escolher encaixes"}
+                </button>
+                {!data.available && (
+                  <p className="text-sm">
+                    Sua geração deste mês já foi usada ou está em processamento.
+                  </p>
+                )}
+                {!data.calendar.canSubmit && (
+                  <p className="text-sm">Novas propostas abrem no dia 1 do próximo mês.</p>
+                )}
+              </>
+            )}
+            {error && (
+              <p role="alert" className="text-sm text-red-800">
+                {error}
+              </p>
+            )}
+          </div>
+        </Modal>
+      )}
+      {modal === "remove" && data && (
+        <Modal title="Revisar proposta de retirada" busy={busy} onClose={() => setModal(null)}>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {chosen.map((a) => (
+              <div key={a.id}>
+                <img src={a.url} alt={a.element} className="aspect-square w-full object-contain" />
+                <p className="text-xs">{a.element}</p>
+                <button
+                  disabled={busy}
+                  onClick={() => toggle(a.id)}
+                  className="mt-1 text-xs underline"
+                >
+                  Tirar da seleção
+                </button>
+              </div>
+            ))}
+          </div>
+          <p className="mt-5 text-sm font-bold">
+            Uma única proposta, com um voto para todo o conjunto de {chosen.length} imagens. Elas
+            continuam ativas até uma eventual aprovação no fim do mês.
+          </p>
+          <label className="mt-4 block">
+            Por que retirar estas imagens?
+            <textarea
+              value={reason}
+              disabled={busy}
+              onChange={(e) => setReason(e.target.value)}
+              maxLength={500}
+              className="mt-2 min-h-24 w-full border bg-white p-3"
+            />
+          </label>
+          <button
+            disabled={busy || !chosen.length || reason.trim().length < 5}
+            onClick={() => act({ action: "remove", assetIds: selected, reason })}
+            className="mt-4 bg-[#244e35] px-5 py-3 text-white disabled:opacity-40"
+          >
+            {busy ? "Enviando…" : "Submeter conjunto à votação"}
+          </button>
+          {error && (
+            <p role="alert" className="mt-3 text-sm text-red-800">
+              {error}
+            </p>
+          )}
+        </Modal>
+      )}
+    </div>
+  );
 }

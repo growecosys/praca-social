@@ -1,0 +1,11 @@
+node_modules
+dist
+.next
+drizzle
+vendor
+components/ui
+hooks/use-mobile.ts
+package-lock.json
+public
+*.md
+lib/common-asset-catalog.json

@@ -1,37 +1,163 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {readFile} from 'node:fs/promises';import {DatabaseSync} from 'node:sqlite';import {transformWithEsbuild} from 'vite';
-test('monthly governance respects Brasilia boundaries, majority, ties and preserves audit records',async()=>{
- const {code}=await transformWithEsbuild((await readFile(new URL('../lib/common-space.ts',import.meta.url),'utf8')).replace("import preparedAssets from './common-asset-catalog.json';",'const preparedAssets='+await readFile(new URL('../lib/common-asset-catalog.json',import.meta.url),'utf8')+';'),'common-space.ts',{loader:'ts',target:'esnext'});
- const {commonCalendar,commonPrompt,seedCommonAssets,closeCommonProposals,proposeCommonRemoval}=await import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`);
- assert.equal(commonCalendar(new Date('2026-11-16T02:59:59Z')).canSubmit,true);
- assert.equal(commonCalendar(new Date('2026-11-16T03:00:00Z')).canSubmit,false);
- assert.equal(commonCalendar(new Date('2026-12-01T02:59:59Z')).monthKey,'2026-11');
- assert.equal(commonCalendar(new Date('2026-12-01T03:00:00Z')).monthKey,'2026-12');
- assert.equal(commonCalendar(new Date('2026-12-15T12:00:00Z')).closesAt,'2027-01-01T03:00:00.000Z');
- assert.ok(commonPrompt('Jabuticaba').includes('Transparent background'));
- const d=new DatabaseSync(':memory:');d.exec("CREATE TABLE users(id TEXT PRIMARY KEY);INSERT INTO users VALUES ('a'),('b')");d.exec(await readFile(new URL('../drizzle/0023_common_space.sql',import.meta.url),'utf8'));d.exec(await readFile(new URL('../drizzle/0024_common_proposal_assets.sql',import.meta.url),'utf8'));
- d.exec(await readFile(new URL('../drizzle/0023_boring_blizzard.sql',import.meta.url),'utf8'));
- const db={prepare(sql){return {bind(...args){return {sql,args,async first(){return d.prepare(sql).get(...args)||null;},async run(){return d.prepare(sql).run(...args);}}}}},async batch(statements){d.exec('BEGIN');try{for(const s of statements)d.prepare(s.sql).run(...s.args);d.exec('COMMIT');}catch(e){d.exec('ROLLBACK');throw e;}}};
- await seedCommonAssets(db);assert.equal(d.prepare('SELECT count(*) n FROM common_assets').get().n,19);
- await seedCommonAssets(db);assert.equal(d.prepare('SELECT count(*) n FROM common_assets').get().n,19);
- d.exec("UPDATE common_assets SET active=0 WHERE id='acervo-irara'");await seedCommonAssets(db);assert.equal(d.prepare("SELECT active FROM common_assets WHERE id='acervo-irara'").get().active,0);
- d.exec("INSERT INTO common_assets(id,element,url,prompt) VALUES ('new','Arara','/test.webp','fixed'); INSERT INTO common_proposals(id,asset_id,creator_id,kind,month_key,closes_at) VALUES ('add','new','a','addition','2026-11','2026-12-01T03:00:00.000Z'),('remove','jabuticaba','a','removal','2026-11','2026-12-01T03:00:00.000Z'); INSERT INTO common_votes(proposal_id,user_id,value) VALUES ('add','a',1),('remove','a',1),('remove','b',-1);");
- await closeCommonProposals(db,new Date('2026-12-01T02:59:59Z'));assert.equal(d.prepare("SELECT active FROM common_assets WHERE id='new'").get().active,0);
- await closeCommonProposals(db,new Date('2026-12-01T03:00:00Z'));assert.equal(d.prepare("SELECT active FROM common_assets WHERE id='new'").get().active,1);assert.equal(d.prepare("SELECT active FROM common_assets WHERE id='jabuticaba'").get().active,1);
- assert.equal(d.prepare("SELECT status FROM common_proposals WHERE id='remove'").get().status,'rejected');assert.equal(d.prepare('SELECT count(*) n FROM common_votes').get().n,3);
- d.exec("INSERT INTO common_proposals(id,asset_id,creator_id,kind,month_key,closes_at) VALUES ('remove2','new','a','removal','2026-12','2027-01-01T03:00:00.000Z');INSERT INTO common_votes(proposal_id,user_id,value) VALUES ('remove2','a',1)");
- await closeCommonProposals(db,new Date('2027-01-01T03:00:00Z'));await seedCommonAssets(db);await closeCommonProposals(db,new Date('2027-01-01T03:00:00Z'));assert.equal(d.prepare("SELECT active FROM common_assets WHERE id='new'").get().active,0);assert.equal(d.prepare("SELECT count(*) n FROM common_assets WHERE id='new'").get().n,1);
- const reserve=d.prepare("INSERT OR IGNORE INTO common_generations(id,user_id,month_key,element) VALUES (?,'a',?,'arara')");assert.equal(reserve.run('g1','2026-11').changes,1);assert.equal(reserve.run('g2','2026-11').changes,0);assert.equal(reserve.run('g3','2026-12').changes,1);
- d.exec("UPDATE common_generations SET status='failed' WHERE id='g1'");assert.equal(reserve.run('g4','2026-11').changes,1);
- const cal=commonCalendar(new Date('2027-01-10T12:00:00Z'));
- const group=await proposeCommonRemoval(db,'a',['ipe-amarelo','tucano-caju'],'Rever o conjunto visual',cal);
- assert.equal(d.prepare('SELECT count(*) n FROM common_proposals WHERE id=?').get(group).n,1);
- assert.equal(d.prepare('SELECT count(*) n FROM common_proposal_assets WHERE proposal_id=?').get(group).n,2);
- await assert.rejects(proposeCommonRemoval(db,'b',['tucano-caju','jabuticaba'],'Outra justificativa',cal),/já tem proposta/);
- await assert.rejects(proposeCommonRemoval(db,'b',['jabuticaba','missing'],'Outra justificativa',cal),/não está ativa/);
- assert.equal(d.prepare("SELECT count(*) n FROM common_proposal_assets WHERE asset_id='jabuticaba'").get().n,0);
- d.prepare('INSERT INTO common_votes(proposal_id,user_id,value) VALUES (?,\'a\',1)').run(group);
- await closeCommonProposals(db,new Date('2027-02-01T03:00:00Z'));
- assert.equal(d.prepare("SELECT count(*) n FROM common_assets WHERE id IN ('ipe-amarelo','tucano-caju') AND active=0").get().n,2);
- assert.equal(d.prepare('SELECT yes_count FROM common_proposals WHERE id=?').get(group).yes_count,1);
- d.close();
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { DatabaseSync } from "node:sqlite";
+import { transformWithEsbuild } from "vite";
+test("monthly governance respects Brasilia boundaries, majority, ties and preserves audit records", async () => {
+  const { code } = await transformWithEsbuild(
+    (await readFile(new URL("../lib/common-space.ts", import.meta.url), "utf8")).replace(
+      /import preparedAssets from ["']\.\/common-asset-catalog\.json["'];/,
+      "const preparedAssets=" +
+        (await readFile(new URL("../lib/common-asset-catalog.json", import.meta.url), "utf8")) +
+        ";",
+    ),
+    "common-space.ts",
+    { loader: "ts", target: "esnext" },
+  );
+  const {
+    commonCalendar,
+    commonPrompt,
+    seedCommonAssets,
+    closeCommonProposals,
+    proposeCommonRemoval,
+  } = await import(`data:text/javascript;base64,${Buffer.from(code).toString("base64")}`);
+  assert.equal(commonCalendar(new Date("2026-11-16T02:59:59Z")).canSubmit, true);
+  assert.equal(commonCalendar(new Date("2026-11-16T03:00:00Z")).canSubmit, false);
+  assert.equal(commonCalendar(new Date("2026-12-01T02:59:59Z")).monthKey, "2026-11");
+  assert.equal(commonCalendar(new Date("2026-12-01T03:00:00Z")).monthKey, "2026-12");
+  assert.equal(
+    commonCalendar(new Date("2026-12-15T12:00:00Z")).closesAt,
+    "2027-01-01T03:00:00.000Z",
+  );
+  assert.ok(commonPrompt("Jabuticaba").includes("Transparent background"));
+  const d = new DatabaseSync(":memory:");
+  d.exec("CREATE TABLE users(id TEXT PRIMARY KEY);INSERT INTO users VALUES ('a'),('b')");
+  d.exec(
+    await readFile(
+      new URL("../tests/fixtures/sqlite-migrations/0023_common_space.sql", import.meta.url),
+      "utf8",
+    ),
+  );
+  d.exec(
+    await readFile(
+      new URL(
+        "../tests/fixtures/sqlite-migrations/0024_common_proposal_assets.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
+  d.exec(
+    await readFile(
+      new URL("../tests/fixtures/sqlite-migrations/0023_boring_blizzard.sql", import.meta.url),
+      "utf8",
+    ),
+  );
+  const db = {
+    prepare(sql) {
+      return {
+        bind(...args) {
+          return {
+            sql,
+            args,
+            async first() {
+              return d.prepare(sql).get(...args) || null;
+            },
+            async run() {
+              return d.prepare(sql).run(...args);
+            },
+          };
+        },
+      };
+    },
+    async batch(statements) {
+      d.exec("BEGIN");
+      try {
+        for (const s of statements) d.prepare(s.sql).run(...s.args);
+        d.exec("COMMIT");
+      } catch (e) {
+        d.exec("ROLLBACK");
+        throw e;
+      }
+    },
+  };
+  await seedCommonAssets(db);
+  assert.equal(d.prepare("SELECT count(*) n FROM common_assets").get().n, 19);
+  await seedCommonAssets(db);
+  assert.equal(d.prepare("SELECT count(*) n FROM common_assets").get().n, 19);
+  d.exec("UPDATE common_assets SET active=0 WHERE id='acervo-irara'");
+  await seedCommonAssets(db);
+  assert.equal(
+    d.prepare("SELECT active FROM common_assets WHERE id='acervo-irara'").get().active,
+    0,
+  );
+  d.exec(
+    "INSERT INTO common_assets(id,element,url,prompt) VALUES ('new','Arara','/test.webp','fixed'); INSERT INTO common_proposals(id,asset_id,creator_id,kind,month_key,closes_at) VALUES ('add','new','a','addition','2026-11','2026-12-01T03:00:00.000Z'),('remove','jabuticaba','a','removal','2026-11','2026-12-01T03:00:00.000Z'); INSERT INTO common_votes(proposal_id,user_id,value) VALUES ('add','a',1),('remove','a',1),('remove','b',-1);",
+  );
+  await closeCommonProposals(db, new Date("2026-12-01T02:59:59Z"));
+  assert.equal(d.prepare("SELECT active FROM common_assets WHERE id='new'").get().active, 0);
+  await closeCommonProposals(db, new Date("2026-12-01T03:00:00Z"));
+  assert.equal(d.prepare("SELECT active FROM common_assets WHERE id='new'").get().active, 1);
+  assert.equal(d.prepare("SELECT active FROM common_assets WHERE id='jabuticaba'").get().active, 1);
+  assert.equal(
+    d.prepare("SELECT status FROM common_proposals WHERE id='remove'").get().status,
+    "rejected",
+  );
+  assert.equal(d.prepare("SELECT count(*) n FROM common_votes").get().n, 3);
+  d.exec(
+    "INSERT INTO common_proposals(id,asset_id,creator_id,kind,month_key,closes_at) VALUES ('remove2','new','a','removal','2026-12','2027-01-01T03:00:00.000Z');INSERT INTO common_votes(proposal_id,user_id,value) VALUES ('remove2','a',1)",
+  );
+  await closeCommonProposals(db, new Date("2027-01-01T03:00:00Z"));
+  await seedCommonAssets(db);
+  await closeCommonProposals(db, new Date("2027-01-01T03:00:00Z"));
+  assert.equal(d.prepare("SELECT active FROM common_assets WHERE id='new'").get().active, 0);
+  assert.equal(d.prepare("SELECT count(*) n FROM common_assets WHERE id='new'").get().n, 1);
+  const reserve = d.prepare(
+    "INSERT OR IGNORE INTO common_generations(id,user_id,month_key,element) VALUES (?,'a',?,'arara')",
+  );
+  assert.equal(reserve.run("g1", "2026-11").changes, 1);
+  assert.equal(reserve.run("g2", "2026-11").changes, 0);
+  assert.equal(reserve.run("g3", "2026-12").changes, 1);
+  d.exec("UPDATE common_generations SET status='failed' WHERE id='g1'");
+  assert.equal(reserve.run("g4", "2026-11").changes, 1);
+  const cal = commonCalendar(new Date("2027-01-10T12:00:00Z"));
+  const group = await proposeCommonRemoval(
+    db,
+    "a",
+    ["ipe-amarelo", "tucano-caju"],
+    "Rever o conjunto visual",
+    cal,
+  );
+  assert.equal(d.prepare("SELECT count(*) n FROM common_proposals WHERE id=?").get(group).n, 1);
+  assert.equal(
+    d.prepare("SELECT count(*) n FROM common_proposal_assets WHERE proposal_id=?").get(group).n,
+    2,
+  );
+  await assert.rejects(
+    proposeCommonRemoval(db, "b", ["tucano-caju", "jabuticaba"], "Outra justificativa", cal),
+    /já tem proposta/,
+  );
+  await assert.rejects(
+    proposeCommonRemoval(db, "b", ["jabuticaba", "missing"], "Outra justificativa", cal),
+    /não está ativa/,
+  );
+  assert.equal(
+    d.prepare("SELECT count(*) n FROM common_proposal_assets WHERE asset_id='jabuticaba'").get().n,
+    0,
+  );
+  d.prepare("INSERT INTO common_votes(proposal_id,user_id,value) VALUES (?,'a',1)").run(group);
+  await closeCommonProposals(db, new Date("2027-02-01T03:00:00Z"));
+  assert.equal(
+    d
+      .prepare(
+        "SELECT count(*) n FROM common_assets WHERE id IN ('ipe-amarelo','tucano-caju') AND active=0",
+      )
+      .get().n,
+    2,
+  );
+  assert.equal(
+    d.prepare("SELECT yes_count FROM common_proposals WHERE id=?").get(group).yes_count,
+    1,
+  );
+  d.close();
 });

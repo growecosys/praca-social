@@ -1,55 +1,182 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {readFile} from "node:fs/promises";
-import {DatabaseSync} from "node:sqlite";
-import {transformWithEsbuild} from "vite";
-async function load(file,replace=s=>s){const {code}=await transformWithEsbuild(replace(await readFile(new URL("../"+file,import.meta.url),"utf8")),file,{loader:"ts",target:"esnext"});return import("data:text/javascript;base64,"+Buffer.from(code).toString("base64"));}
-test("nature placements only use compatible supports and vary without duplicate assets or spots",async()=>{
- const p=await load("lib/nature-placement.ts");
- assert.throws(()=>p.validatePlacement({support:"ground",spots:["margin"],size:"small",motion:"still",baseline:0}));
- assert.throws(()=>p.validatePlacement({...p.defaultPlacement("lobo-guara"),baseline:300}));
- const wolf={id:"lobo-guara",placement:p.defaultPlacement("lobo-guara")};
- const plant={id:"ipe-amarelo",placement:p.defaultPlacement("ipe-amarelo")};
- const first=p.chooseInhabitants([wolf,plant],["header","card","margin"],()=>.4,2);
- assert.equal(first.length,2);assert.equal(new Set(first.map(x=>x.asset.id)).size,2);assert.equal(new Set(first.map(x=>x.spot)).size,2);
- const second=p.chooseInhabitants([wolf],["header","map"],()=>.1,1,"lobo-guara:map");
- assert.equal(second[0].spot,"header");
- assert.equal(p.chooseInhabitants([wolf],["margin"],()=>0,2).length,0);
+import { readFile } from "node:fs/promises";
+import { DatabaseSync } from "node:sqlite";
+import { transformWithEsbuild } from "vite";
+async function load(file, replace = (s) => s) {
+  const { code } = await transformWithEsbuild(
+    replace(await readFile(new URL("../" + file, import.meta.url), "utf8")),
+    file,
+    { loader: "ts", target: "esnext" },
+  );
+  return import("data:text/javascript;base64," + Buffer.from(code).toString("base64"));
+}
+test("nature placements only use compatible supports and vary without duplicate assets or spots", async () => {
+  const p = await load("lib/nature-placement.ts");
+  assert.throws(() =>
+    p.validatePlacement({
+      support: "ground",
+      spots: ["margin"],
+      size: "small",
+      motion: "still",
+      baseline: 0,
+    }),
+  );
+  assert.throws(() => p.validatePlacement({ ...p.defaultPlacement("lobo-guara"), baseline: 300 }));
+  const wolf = { id: "lobo-guara", placement: p.defaultPlacement("lobo-guara") };
+  const plant = { id: "ipe-amarelo", placement: p.defaultPlacement("ipe-amarelo") };
+  const first = p.chooseInhabitants([wolf, plant], ["header", "card", "margin"], () => 0.4, 2);
+  assert.equal(first.length, 2);
+  assert.equal(new Set(first.map((x) => x.asset.id)).size, 2);
+  assert.equal(new Set(first.map((x) => x.spot)).size, 2);
+  const second = p.chooseInhabitants([wolf], ["header", "map"], () => 0.1, 1, "lobo-guara:map");
+  assert.equal(second[0].spot, "header");
+  assert.equal(p.chooseInhabitants([wolf], ["margin"], () => 0, 2).length, 0);
 });
-test("image generation saves a resumable draft, submission validates ownership and never generates again",async()=>{
- const d=new DatabaseSync(":memory:");
- d.exec("CREATE TABLE users(id TEXT PRIMARY KEY,username TEXT,display_name TEXT); INSERT INTO users VALUES ('a','ana','Ana'),('b','beto','Beto'); CREATE TABLE activity_events(user_id TEXT,action TEXT,entity_type TEXT,entity_id TEXT,metadata_json TEXT)");
- d.exec(await readFile(new URL("../drizzle/0023_common_space.sql",import.meta.url),"utf8"));
- d.exec(await readFile(new URL("../drizzle/0024_common_proposal_assets.sql",import.meta.url),"utf8"));
- d.exec(await readFile(new URL("../drizzle/0023_boring_blizzard.sql",import.meta.url),"utf8"));
- const db={prepare(sql){const bound=args=>({sql,args,async first(){return d.prepare(sql).get(...args)||null;},async all(){return {results:d.prepare(sql).all(...args)};},async run(){const r=d.prepare(sql).run(...args);return {meta:{changes:r.changes}};}});return {...bound([]),bind:(...args)=>bound(args)};},async batch(statements){d.exec("BEGIN");try{const out=[];for(const s of statements){const r=d.prepare(s.sql).run(...s.args);out.push({meta:{changes:r.changes}});}d.exec("COMMIT");return out;}catch(e){d.exec("ROLLBACK");throw e;}}};
- globalThis.__catalog=await readFile(new URL("../lib/common-asset-catalog.json",import.meta.url),"utf8");
- globalThis.__natureHelpers=await load("lib/common-space.ts",s=>s.replace("import preparedAssets from './common-asset-catalog.json';", "const preparedAssets="+globalThis.__catalog+";"));
- globalThis.__placementHelpers=await load("lib/nature-placement.ts");
- let calls=0,user={id:"a",username:"ana",profileComplete:true};
- globalThis.__natureTest={env:{DB:db,BUCKET:{async put(){}},OPENAI_API_KEY:"test-only"},auth:()=>({user}),user:()=>user,validate:async()=>({valid:true,element:"Arara"}),generate:async()=>{calls++;return new Uint8Array([1]);}};
- const api=await load("app/api/common-space/route.ts",s=>s.replace(/^import .*$/gm,line=>{
-  if(line.includes("nature-placement"))return "const {validatePlacement}=globalThis.__placementHelpers;";
-  if(line.includes("common-validation"))return "class CommonApiError extends Error{};const validateCommonElement=globalThis.__natureTest.validate,generateCommonImage=globalThis.__natureTest.generate;";
-  if(line.includes("cloudflare:workers"))return "const {env}=globalThis.__natureTest;";
-  if(line.includes("praca-auth"))return "const requirePracaUser=globalThis.__natureTest.auth,getPracaUser=globalThis.__natureTest.user;";
-  if(line.includes("common-space"))return "const {commonCalendar,commonPrompt,seedCommonAssets,closeCommonProposals,proposeCommonRemoval}=globalThis.__natureHelpers;";
-  return line;
- }));
- const post=payload=>api.POST(new Request("http://test/api/common-space",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)}));
- assert.equal((await post({action:"generate",element:"arara",confirmed:true})).status,200);
- assert.equal(calls,1);assert.equal(d.prepare("SELECT count(*) n FROM common_proposals").get().n,0);
- const draft=(await (await api.GET()).json()).draft;assert.ok(draft.id);
- const placement={support:"perch",spots:["header","card"],size:"tiny",motion:"still",baseline:0};
- user={id:"b",username:"beto",profileComplete:true};
- assert.equal((await post({action:"submit",assetId:draft.id,placement})).status,403);
- user={id:"a",username:"ana",profileComplete:true};
- assert.equal((await post({action:"submit",assetId:draft.id,placement:{...placement,spots:["map"]}})).status,400);
- assert.equal((await post({action:"submit",assetId:draft.id,placement})).status,200);
- assert.equal((await post({action:"submit",assetId:draft.id,placement})).status,200);
- assert.equal(calls,1);assert.equal(d.prepare("SELECT count(*) n FROM common_proposals").get().n,1);
- assert.deepEqual(JSON.parse(d.prepare("SELECT placement_json FROM common_assets WHERE id=?").get(draft.id).placement_json),placement);
- assert.equal((await post({action:"generate",element:"arara",confirmed:true})).status,429);
- assert.equal((await (await api.GET()).json()).draft,null);
- delete globalThis.__natureHelpers;delete globalThis.__placementHelpers;delete globalThis.__natureTest;d.close();
+test("image generation saves a resumable draft, submission validates ownership and never generates again", async () => {
+  const d = new DatabaseSync(":memory:");
+  d.exec(
+    "CREATE TABLE users(id TEXT PRIMARY KEY,username TEXT,display_name TEXT); INSERT INTO users VALUES ('a','ana','Ana'),('b','beto','Beto'); CREATE TABLE activity_events(user_id TEXT,action TEXT,entity_type TEXT,entity_id TEXT,metadata_json TEXT)",
+  );
+  d.exec(
+    await readFile(
+      new URL("../tests/fixtures/sqlite-migrations/0023_common_space.sql", import.meta.url),
+      "utf8",
+    ),
+  );
+  d.exec(
+    await readFile(
+      new URL(
+        "../tests/fixtures/sqlite-migrations/0024_common_proposal_assets.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
+  d.exec(
+    await readFile(
+      new URL("../tests/fixtures/sqlite-migrations/0023_boring_blizzard.sql", import.meta.url),
+      "utf8",
+    ),
+  );
+  const db = {
+    prepare(sql) {
+      const bound = (args) => ({
+        sql,
+        args,
+        async first() {
+          return d.prepare(sql).get(...args) || null;
+        },
+        async all() {
+          return { results: d.prepare(sql).all(...args) };
+        },
+        async run() {
+          const r = d.prepare(sql).run(...args);
+          return { meta: { changes: r.changes } };
+        },
+      });
+      return { ...bound([]), bind: (...args) => bound(args) };
+    },
+    async batch(statements) {
+      d.exec("BEGIN");
+      try {
+        const out = [];
+        for (const s of statements) {
+          const r = d.prepare(s.sql).run(...s.args);
+          out.push({ meta: { changes: r.changes } });
+        }
+        d.exec("COMMIT");
+        return out;
+      } catch (e) {
+        d.exec("ROLLBACK");
+        throw e;
+      }
+    },
+  };
+  globalThis.__catalog = await readFile(
+    new URL("../lib/common-asset-catalog.json", import.meta.url),
+    "utf8",
+  );
+  globalThis.__natureHelpers = await load("lib/common-space.ts", (s) =>
+    s.replace(
+      /import preparedAssets from ["']\.\/common-asset-catalog\.json["'];/,
+      "const preparedAssets=" + globalThis.__catalog + ";",
+    ),
+  );
+  globalThis.__placementHelpers = await load("lib/nature-placement.ts");
+  let calls = 0,
+    user = { id: "a", username: "ana", profileComplete: true };
+  globalThis.__natureTest = {
+    env: { DB: db, BUCKET: { async put() {} } },
+    auth: () => ({ user }),
+    user: () => user,
+    validate: async () => ({ valid: true, element: "Arara" }),
+    generate: async () => {
+      calls++;
+      return new Uint8Array([1]);
+    },
+  };
+  const api = await load("app/api/common-space/route.ts", (s) =>
+    s.replace(/^import\b[^;]*;/gm, (line) => {
+      if (line.includes("nature-placement"))
+        return "const {validatePlacement}=globalThis.__placementHelpers;";
+      if (line.includes("common-validation"))
+        return "class CommonApiError extends Error{};const validateCommonElement=globalThis.__natureTest.validate,generateCommonImage=globalThis.__natureTest.generate;";
+      if (/lib\/env["']/.test(line)) return "const {env}=globalThis.__natureTest;";
+      if (line.includes("praca-auth"))
+        return "const requirePracaUser=globalThis.__natureTest.auth,getPracaUser=globalThis.__natureTest.user;";
+      if (line.includes("common-space"))
+        return "const {commonCalendar,commonPrompt,seedCommonAssets,closeCommonProposals,proposeCommonRemoval}=globalThis.__natureHelpers;";
+      return line;
+    }),
+  );
+  const post = (payload) =>
+    api.POST(
+      new Request("http://test/api/common-space", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      }),
+    );
+  assert.equal((await post({ action: "generate", element: "arara", confirmed: true })).status, 200);
+  assert.equal(calls, 1);
+  assert.equal(d.prepare("SELECT count(*) n FROM common_proposals").get().n, 0);
+  const draft = (await (await api.GET()).json()).draft;
+  assert.ok(draft.id);
+  const placement = {
+    support: "perch",
+    spots: ["header", "card"],
+    size: "tiny",
+    motion: "still",
+    baseline: 0,
+  };
+  user = { id: "b", username: "beto", profileComplete: true };
+  assert.equal((await post({ action: "submit", assetId: draft.id, placement })).status, 403);
+  user = { id: "a", username: "ana", profileComplete: true };
+  assert.equal(
+    (
+      await post({
+        action: "submit",
+        assetId: draft.id,
+        placement: { ...placement, spots: ["map"] },
+      })
+    ).status,
+    400,
+  );
+  assert.equal((await post({ action: "submit", assetId: draft.id, placement })).status, 200);
+  assert.equal((await post({ action: "submit", assetId: draft.id, placement })).status, 200);
+  assert.equal(calls, 1);
+  assert.equal(d.prepare("SELECT count(*) n FROM common_proposals").get().n, 1);
+  assert.deepEqual(
+    JSON.parse(
+      d.prepare("SELECT placement_json FROM common_assets WHERE id=?").get(draft.id).placement_json,
+    ),
+    placement,
+  );
+  assert.equal((await post({ action: "generate", element: "arara", confirmed: true })).status, 429);
+  assert.equal((await (await api.GET()).json()).draft, null);
+  delete globalThis.__natureHelpers;
+  delete globalThis.__placementHelpers;
+  delete globalThis.__natureTest;
+  d.close();
 });

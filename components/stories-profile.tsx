@@ -1,3 +1,47 @@
-import {env} from 'cloudflare:workers';
-import {storyProfile} from '../lib/stories-store';
-export default async function StoriesProfile({userId,owner}:{userId:string;owner:boolean}){const p=await storyProfile(env.DB,userId);const acted=p.campaigns.reduce((n:number,c:any)=>n+c.rounds,0);return <article className="mt-5 border border-[#b8c1a7] bg-[#e7ebd8] p-5"><div className="flex flex-wrap items-center justify-between gap-3"><h3 className="font-serif text-2xl">Histórias da Praça</h3>{owner&&<a className="text-sm underline" href="/jogar/historias">Ver a campanha →</a>}</div><p className="mt-3 text-sm leading-7">{p.campaigns.length?`${p.completed} campanhas encerradas com participação · ${acted} ${acted===1?'ação registrada':'ações registradas'}`:'Uma história coletiva com seu papel e outras pessoas da Praça.'}</p>{owner&&p.campaigns.length>0&&<div className="mt-3 flex flex-wrap gap-3 text-xs">{p.campaigns.slice(0,3).map((c:any,i:number)=><a className="underline" key={c.id} href={'/jogar/historias?campanha='+encodeURIComponent(c.id)}>Caderno {p.campaigns.length-i} · {c.rounds} {c.rounds===1?'ação':'ações'}</a>)}</div>}{acted>0&&<p className="mt-3 text-xs text-[#65745c]">✦ Primeiro passo em grupo · 5 XP{p.completed>0?'　✦ Uma história vivida · 20 XP':''}</p>}</article>}
+import { env } from "../lib/env";
+import { storyProfile } from "../lib/stories-store";
+export default async function StoriesProfile({
+  userId,
+  owner,
+}: {
+  userId: string;
+  owner: boolean;
+}) {
+  const p = await storyProfile(env.DB, userId);
+  const acted = p.campaigns.reduce((n: number, c: any) => n + c.rounds, 0);
+  return (
+    <article className="mt-5 border border-[#b8c1a7] bg-[#e7ebd8] p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h3 className="font-serif text-2xl">Histórias da Praça</h3>
+        {owner && (
+          <a className="text-sm underline" href="/jogar/historias">
+            Ver a campanha →
+          </a>
+        )}
+      </div>
+      <p className="mt-3 text-sm leading-7">
+        {p.campaigns.length
+          ? `${p.completed} campanhas encerradas com participação · ${acted} ${acted === 1 ? "ação registrada" : "ações registradas"}`
+          : "Uma história coletiva com seu papel e outras pessoas da Praça."}
+      </p>
+      {owner && p.campaigns.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-3 text-xs">
+          {p.campaigns.slice(0, 3).map((c: any, i: number) => (
+            <a
+              className="underline"
+              key={c.id}
+              href={"/jogar/historias?campanha=" + encodeURIComponent(c.id)}
+            >
+              Caderno {p.campaigns.length - i} · {c.rounds} {c.rounds === 1 ? "ação" : "ações"}
+            </a>
+          ))}
+        </div>
+      )}
+      {acted > 0 && (
+        <p className="mt-3 text-xs text-[#65745c]">
+          ✦ Primeiro passo em grupo · 5 XP{p.completed > 0 ? "　✦ Uma história vivida · 20 XP" : ""}
+        </p>
+      )}
+    </article>
+  );
+}

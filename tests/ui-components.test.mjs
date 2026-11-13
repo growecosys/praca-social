@@ -36,7 +36,10 @@ async function readCssTree(directory) {
 }
 
 test("emits the catalog's animation and scrolling utilities", async () => {
-  const css = await readCssTree(path.join(root, "dist"));
+  const staticDirectory = path.join(root, ".next", "static");
+  const css = await readCssTree(staticDirectory).catch(() => {
+    throw new Error("Run `npm run build` first: the Next.js CSS output is missing.");
+  });
 
   assert.match(css, /--tw-enter-opacity/);
   assert.match(css, /scrollbar-width:\s*thin/);
@@ -74,9 +77,7 @@ test("emits chart themes for the starter's media dark mode", async () => {
 });
 
 test("renders sidebar skeletons deterministically", async () => {
-  const { SidebarMenuSkeleton } = await vite.ssrLoadModule(
-    "/components/ui/sidebar.tsx",
-  );
+  const { SidebarMenuSkeleton } = await vite.ssrLoadModule("/components/ui/sidebar.tsx");
   const first = renderToStaticMarkup(React.createElement(SidebarMenuSkeleton));
   const second = renderToStaticMarkup(React.createElement(SidebarMenuSkeleton));
 

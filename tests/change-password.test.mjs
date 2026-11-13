@@ -1,6 +1,98 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {DatabaseSync} from 'node:sqlite';import {readFile} from 'node:fs/promises';import {transformWithEsbuild} from 'vite';
-const {code}=await transformWithEsbuild(await readFile('lib/change-password.ts','utf8'),'password.ts',{loader:'ts',target:'esnext'});const {changePassword}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
-function setup(){const d=new DatabaseSync(':memory:');d.exec(`CREATE TABLE users(id TEXT PRIMARY KEY,secret_hash TEXT,secret_salt TEXT,updated_at TEXT);CREATE TABLE sessions(user_id TEXT);CREATE TABLE email_auth_tokens(user_id TEXT);CREATE TABLE activity_events(user_id TEXT,action TEXT,entity_type TEXT,entity_id TEXT);INSERT INTO users VALUES ('a','old-hash','salt',NULL),('b','b-hash','salt',NULL);INSERT INTO sessions VALUES ('a'),('a'),('b');INSERT INTO email_auth_tokens VALUES ('a'),('b');`);const db={prepare(sql){const bind=args=>({sql,args,async first(){return d.prepare(sql).get(...args)||null;}});return {...bind([]),bind:(...args)=>bind(args)};},async batch(ss){d.exec('BEGIN');try{const r=ss.map(s=>({meta:{changes:Number(d.prepare(s.sql).run(...s.args).changes)}}));d.exec('COMMIT');return r;}catch(e){d.exec('ROLLBACK');throw e;}}};return {d,db};}
-const verify=async v=>v==='old-password',hash=async()=>({hash:'new-hash',salt:'fresh-salt'}),p={currentPassword:'old-password',newPassword:'new-password',confirmPassword:'new-password'};
-test('password change verifies current secret and revokes only owner sessions and pending links atomically',async()=>{const {d,db}=setup();await assert.rejects(changePassword(db,'a',{...p,currentPassword:'wrong'},verify,hash));assert.equal(d.prepare("SELECT count(*) n FROM sessions WHERE user_id='a'").get().n,2);await assert.rejects(changePassword(db,'a',{...p,confirmPassword:'different'},verify,hash));await changePassword(db,'a',p,verify,hash);assert.equal(d.prepare("SELECT secret_hash FROM users WHERE id='a'").get().secret_hash,'new-hash');assert.equal(d.prepare("SELECT count(*) n FROM sessions WHERE user_id='a'").get().n,0);assert.equal(d.prepare("SELECT count(*) n FROM sessions WHERE user_id='b'").get().n,1);assert.equal(d.prepare("SELECT count(*) n FROM email_auth_tokens WHERE user_id='a'").get().n,0);assert.equal(d.prepare('SELECT action FROM activity_events').get().action,'password_changed');d.close();});
-test('audit failure rolls back password and revocations; concurrent password update cannot revoke sessions',async()=>{const {d,db}=setup();d.exec("CREATE TRIGGER fail BEFORE INSERT ON activity_events BEGIN SELECT RAISE(ABORT,'failed'); END");await assert.rejects(changePassword(db,'a',p,verify,hash));assert.equal(d.prepare("SELECT secret_hash FROM users WHERE id='a'").get().secret_hash,'old-hash');assert.equal(d.prepare("SELECT count(*) n FROM sessions WHERE user_id='a'").get().n,2);d.exec('DROP TRIGGER fail');await assert.rejects(changePassword(db,'a',p,async()=>{d.prepare("UPDATE users SET secret_hash='concurrent' WHERE id='a'").run();return true;},hash),/outra sessão/);assert.equal(d.prepare("SELECT count(*) n FROM sessions WHERE user_id='a'").get().n,2);d.close();});
+import test from "node:test";
+import assert from "node:assert/strict";
+import { DatabaseSync } from "node:sqlite";
+import { readFile } from "node:fs/promises";
+import { transformWithEsbuild } from "vite";
+const { code } = await transformWithEsbuild(
+  await readFile("lib/change-password.ts", "utf8"),
+  "password.ts",
+  { loader: "ts", target: "esnext" },
+);
+const { changePassword } = await import(
+  "data:text/javascript;base64," + Buffer.from(code).toString("base64")
+);
+function setup() {
+  const d = new DatabaseSync(":memory:");
+  d.exec(
+    `CREATE TABLE users(id TEXT PRIMARY KEY,secret_hash TEXT,secret_salt TEXT,updated_at TEXT);CREATE TABLE sessions(user_id TEXT);CREATE TABLE email_auth_tokens(user_id TEXT);CREATE TABLE activity_events(user_id TEXT,action TEXT,entity_type TEXT,entity_id TEXT);INSERT INTO users VALUES ('a','old-hash','salt',NULL),('b','b-hash','salt',NULL);INSERT INTO sessions VALUES ('a'),('a'),('b');INSERT INTO email_auth_tokens VALUES ('a'),('b');`,
+  );
+  const db = {
+    prepare(sql) {
+      const bind = (args) => ({
+        sql,
+        args,
+        async first() {
+          return d.prepare(sql).get(...args) || null;
+        },
+      });
+      return { ...bind([]), bind: (...args) => bind(args) };
+    },
+    async batch(ss) {
+      d.exec("BEGIN");
+      try {
+        const r = ss.map((s) => ({
+          meta: { changes: Number(d.prepare(s.sql).run(...s.args).changes) },
+        }));
+        d.exec("COMMIT");
+        return r;
+      } catch (e) {
+        d.exec("ROLLBACK");
+        throw e;
+      }
+    },
+  };
+  return { d, db };
+}
+const verify = async (v) => v === "old-password",
+  hash = async () => ({ hash: "new-hash", salt: "fresh-salt" }),
+  p = {
+    currentPassword: "old-password",
+    newPassword: "new-password",
+    confirmPassword: "new-password",
+  };
+test("password change verifies current secret and revokes only owner sessions and pending links atomically", async () => {
+  const { d, db } = setup();
+  await assert.rejects(changePassword(db, "a", { ...p, currentPassword: "wrong" }, verify, hash));
+  assert.equal(d.prepare("SELECT count(*) n FROM sessions WHERE user_id='a'").get().n, 2);
+  await assert.rejects(
+    changePassword(db, "a", { ...p, confirmPassword: "different" }, verify, hash),
+  );
+  await changePassword(db, "a", p, verify, hash);
+  assert.equal(
+    d.prepare("SELECT secret_hash FROM users WHERE id='a'").get().secret_hash,
+    "new-hash",
+  );
+  assert.equal(d.prepare("SELECT count(*) n FROM sessions WHERE user_id='a'").get().n, 0);
+  assert.equal(d.prepare("SELECT count(*) n FROM sessions WHERE user_id='b'").get().n, 1);
+  assert.equal(d.prepare("SELECT count(*) n FROM email_auth_tokens WHERE user_id='a'").get().n, 0);
+  assert.equal(d.prepare("SELECT action FROM activity_events").get().action, "password_changed");
+  d.close();
+});
+test("audit failure rolls back password and revocations; concurrent password update cannot revoke sessions", async () => {
+  const { d, db } = setup();
+  d.exec(
+    "CREATE TRIGGER fail BEFORE INSERT ON activity_events BEGIN SELECT RAISE(ABORT,'failed'); END",
+  );
+  await assert.rejects(changePassword(db, "a", p, verify, hash));
+  assert.equal(
+    d.prepare("SELECT secret_hash FROM users WHERE id='a'").get().secret_hash,
+    "old-hash",
+  );
+  assert.equal(d.prepare("SELECT count(*) n FROM sessions WHERE user_id='a'").get().n, 2);
+  d.exec("DROP TRIGGER fail");
+  await assert.rejects(
+    changePassword(
+      db,
+      "a",
+      p,
+      async () => {
+        d.prepare("UPDATE users SET secret_hash='concurrent' WHERE id='a'").run();
+        return true;
+      },
+      hash,
+    ),
+    /outra sessão/,
+  );
+  assert.equal(d.prepare("SELECT count(*) n FROM sessions WHERE user_id='a'").get().n, 2);
+  d.close();
+});

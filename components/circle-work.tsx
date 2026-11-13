@@ -1,50 +1,778 @@
 "use client";
-import {useEffect,useState} from 'react';
-const fmt=(n:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(n/100);
-const labels:Record<string,string>={proposed:'Proposto',approved:'Aprovado',delivered:'Entregue',accepted:'Aceito',cancelled:'Cancelado'};
-const input='mt-2 block min-h-11 w-full border border-[#a5ad9e] bg-white p-3';
-const box='space-y-4 rounded-sm border border-[#c8c0b1] bg-[#fbf8f1] p-5';
-const button='inline-flex min-h-11 items-center justify-center border border-[#a5ad9e] px-4 py-2 text-sm disabled:opacity-40';
-const primary=button+' bg-[#244e35] text-white';
-export default function CircleWork({circleId,userId,owner,members,view,readOnly}:{circleId:number;userId:string;owner:boolean;members:any[];view:'agreements'|'resources';readOnly:boolean}){
- const [data,setData]=useState<any>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[selected,setSelected]=useState(''),[form,setForm]=useState(''),[editing,setEditing]=useState<any>(null),[review,setReview]=useState<any>(null),[notice,setNotice]=useState('');
- const [paymentKey,setPaymentKey]=useState(()=>crypto.randomUUID());
- const endpoint=`/api/circles/${circleId}/work`;
- async function load(){const r=await fetch(endpoint,{cache:'no-store'});const d=await r.json();if(!r.ok){if([401,403,404].includes(r.status))setData(null);throw Error(d.error);}setData(d);setSelected(v=>v||String(d.cycles[0]?.id||''));}
- useEffect(()=>{let alive=true;void fetch(endpoint,{cache:'no-store'}).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.error);if(alive){setData(d);setSelected(String(d.cycles[0]?.id||''));}}).catch(e=>{if(alive)setError(e.message)});return()=>{alive=false}},[endpoint]);
- async function act(payload:any){setBusy(true);setError('');setNotice('');try{const r=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)}),d=await r.json();if(!r.ok)throw Error(d.error);setForm('');setEditing(null);setReview(null);setPaymentKey(crypto.randomUUID());setNotice('Registro salvo.');if(payload.action==='cycle')setSelected('');await load();}catch(e){setError(e instanceof Error?e.message:'Tente novamente.');}finally{setBusy(false);}}
- function submit(e:React.FormEvent<HTMLFormElement>,action:string,extra:any={}){e.preventDefault();void act({...Object.fromEntries(new FormData(e.currentTarget)),cycleId:Number(selected),action,...extra});}
- function field(label:string,name:string,value='',type='text',required=true){return <label className="block text-sm">{label}<input required={required} name={name} defaultValue={value} type={type} maxLength={type==='text'?160:undefined} className={input}/></label>}
- function area(label:string,name:string,value=''){return <label className="block text-sm">{label}<textarea required name={name} defaultValue={value} maxLength={4000} rows={3} className={input}/></label>}
- function person(label:string,name:string,value:string){return <label className="block text-sm">{label}<select name={name} defaultValue={value} className={input} required>{members.filter(m=>m.status==='active').map(m=><option value={m.userId} key={m.userId}>{m.name}</option>)}</select></label>}
- function ask(label:string,payload:any,description:string){return <button className={button} disabled={busy} onClick={()=>{setError('');setReview({label,payload,description});}}>{label}</button>}
- const name=(id:string)=>members.find(m=>m.userId===id)?.name||'Ex-participante';
- if(!data)return <section className={box}>{error?<p role="alert">{error}</p>:<p role="status">Carregando registros do círculo…</p>}<button className={button} onClick={()=>void load().catch(e=>setError(e.message))}>Tentar novamente</button></section>;
- const cycle=data.cycles.find((c:any)=>String(c.id)===selected),locked=readOnly||cycle?.status==='closed',agreements=data.agreements.filter((a:any)=>String(a.cycle_id)===selected),funds=data.funds.filter((f:any)=>String(f.cycle_id)===selected),payments=data.payments.filter((p:any)=>agreements.some((a:any)=>a.id===p.agreement_id)),valid=payments.filter((p:any)=>!p.voided_at);
- const paid=(id:number)=>valid.filter((p:any)=>p.agreement_id===id).reduce((sum:number,p:any)=>sum+p.amount,0),used=(id:number)=>valid.filter((p:any)=>p.fund_id===id).reduce((sum:number,p:any)=>sum+p.amount,0);
- const sum=(list:any[])=>list.reduce((n:number,a:any)=>n+a.amount,0),confirmed=sum(funds.filter((f:any)=>f.confirmed)),spent=sum(valid),accepted=sum(agreements.filter((a:any)=>a.status==='accepted')),approved=sum(agreements.filter((a:any)=>['approved','delivered','accepted'].includes(a.status)));
- return <section data-no-translate className="space-y-6"><header className="flex flex-wrap items-end justify-between gap-4"><div><h2 className="font-serif text-3xl">{view==='agreements'?'Acordos de trabalho':'Recursos e saldos'}</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-[#667064]">{view==='agreements'?'Combine o escopo e o valor antes de trabalhar. Proponha, aprove, entregue e registre o aceite.':'Recursos previstos ficam separados do caixa confirmado. Os pagamentos são registros manuais e não executam transferências.'}</p></div><a className={button} href={endpoint+'?export=1'}>Exportar registros</a></header>
- <div className="flex flex-wrap items-end gap-3">{data.cycles.length>0&&<label className="min-w-0 flex-1 text-sm">Ciclo de trabalho<select value={selected} onChange={e=>{setSelected(e.target.value);setForm('');setEditing(null);setReview(null);}} className={input}>{data.cycles.map((c:any)=><option key={c.id} value={c.id}>{c.name} · {c.status==='open'?'Aberto':'Encerrado'}</option>)}</select></label>}{owner&&!readOnly&&<button className={button} onClick={()=>{setForm(form==='cycle'?'':'cycle');setEditing(null);}}>Novo ciclo</button>}</div>
- {form==='cycle'&&<form className={box} onSubmit={e=>submit(e,'cycle')}><h3 className="font-serif text-2xl">Planejar ciclo</h3>{field('Nome do ciclo','name')}{area('Objetivo','goal')}<div className="grid gap-4 sm:grid-cols-2">{field('Início','start','','date')}{field('Fim','end','','date')}</div><button disabled={busy} className={primary}>Criar ciclo</button><button type="button" className={button} onClick={()=>setForm('')}>Cancelar</button></form>}
- {!cycle?<p className="border p-6 text-sm">{owner?'Crie o primeiro ciclo para organizar acordos e recursos.':'O responsável ainda não abriu um ciclo de trabalho.'}</p>:<><div className="border-l-4 border-[#f0c64b] pl-4"><h3 className="font-semibold">{cycle.name}</h3><p className="mt-1 whitespace-pre-wrap text-sm">{cycle.goal}</p><p className="mt-2 text-xs">{cycle.start} → {cycle.end} · {cycle.status==='closed'?'Encerrado':'Aberto'}</p>{owner&&!readOnly&&<div className="mt-3">{ask(cycle.status==='closed'?'Reabrir ciclo':'Encerrar ciclo',{action:'cycle_status',cycleId:cycle.id,status:cycle.status==='closed'?'open':'closed'},'O encerramento preserva os registros e impede alterações. Acordos em execução e saldos a pagar precisam ser resolvidos antes.')}</div>}</div>
- {view==='agreements'?<>
- {!locked&&<button className={primary} onClick={()=>{setForm(form==='proposal'?'':'proposal');setEditing(null);}}>+ Propor trabalho</button>}
- {form==='proposal'&&<form key={editing?.id||'new'} className={box} onSubmit={e=>submit(e,editing?'edit_proposal':'proposal',editing?{id:editing.id}:{})}><h3 className="font-serif text-2xl">{editing?'Editar proposta':'Nova proposta'}</h3>{field('Título do trabalho','title',editing?.title)}{field('Papel ou tipo de contribuição','role',editing?.role,'text',false)}<div className="grid gap-4 sm:grid-cols-2">{person('Responsável pela entrega','assigneeId',editing?.assignee_id||userId)}{person('Responsável pelo aceite','reviewerId',editing?.reviewer_id||data.circle.ownerId)}</div>{area('Escopo: o que será entregue','scope',editing?.scope)}{area('Critérios de aceite','criteria',editing?.criteria)}<div className="grid gap-4 sm:grid-cols-2">{field('Valor proposto (R$; use 0 se voluntário)','amount',editing?String(editing.amount/100):'0')}{field('Prazo de entrega','due',editing?.due||cycle.end,'date')}</div>{area('Condições de pagamento ou contribuição voluntária','terms',editing?.terms)}<p className="text-xs text-[#667064]">Uma proposta ainda não é um compromisso. Após aprovação, escopo e valor ficam preservados.</p><div className="flex gap-3"><button disabled={busy} className={primary}>Salvar proposta</button><button type="button" className={button} onClick={()=>{setForm('');setEditing(null);}}>Cancelar</button></div></form>}
- <div className="space-y-4">{agreements.map((a:any)=><article key={a.id} className={box}><div className="flex flex-wrap justify-between gap-3"><h3 className="min-w-0 break-words font-serif text-2xl">{a.title}</h3><span className="border px-3 py-1 text-sm">{labels[a.status]}{a.status==='accepted'&&a.amount>0?(paid(a.id)===a.amount?' · Quitado':paid(a.id)>0?' · Pago em parte':' · A pagar'):''}</span></div><p className="text-sm">{name(a.assignee_id)}{a.role?' · '+a.role:''} · Prazo {a.due}</p><p className="whitespace-pre-wrap break-words">{a.scope}</p><details><summary className="min-h-11 cursor-pointer py-2 text-sm underline">Critérios e condições do acordo</summary><dl className="space-y-3 text-sm"><div><dt className="font-semibold">Critérios de aceite</dt><dd className="whitespace-pre-wrap break-words">{a.criteria}</dd></div><div><dt className="font-semibold">Condições</dt><dd className="whitespace-pre-wrap break-words">{a.terms}</dd></div><div><dt className="font-semibold">Quem dá o aceite</dt><dd>{name(a.reviewer_id)}</dd></div></dl></details>{a.evidence&&<div><h4 className="text-sm font-semibold">Evidência da entrega</h4><p className="whitespace-pre-wrap break-words text-sm">{a.evidence}</p></div>}<p className="text-lg font-semibold">{fmt(a.amount)} <span className="text-sm font-normal">· Pago {fmt(paid(a.id))}{a.status==='accepted'&&` · Saldo ${fmt(a.amount-paid(a.id))}`}</span></p>
- {!locked&&<div className="flex flex-wrap gap-3">{a.status==='proposed'&&(owner||a.creator_id===userId)&&<button className={button} onClick={()=>{setEditing(a);setForm('proposal');}}>Editar proposta</button>}{a.status==='proposed'&&owner&&ask('Aprovar proposta',{action:'approve',id:a.id},`${a.title} · ${name(a.assignee_id)} · ${fmt(a.amount)}. Revise os critérios e as condições antes de aprovar.`)}{a.status==='approved'&&a.assignee_id===userId&&!a.agreed_at&&ask('Concordo com o trabalho',{action:'agree',id:a.id},'Confirmo o escopo, os critérios, o prazo e as condições deste acordo.')}{a.status==='approved'&&a.agreed_at&&<span className="self-center text-xs">Participação confirmada</span>}{a.status==='delivered'&&a.reviewer_id===userId&&<>{ask('Aceitar entrega',{action:'accept',id:a.id},`Confirmo que a evidência atende aos critérios de ${a.title}. O valor reconhecido será ${fmt(a.amount)}.`)}{ask('Devolver para ajuste',{action:'return_delivery',id:a.id},'O acordo voltará à etapa de execução para uma nova entrega.')}</>}{!['accepted','cancelled'].includes(a.status)&&(owner||a.status==='proposed'&&a.creator_id===userId)&&ask('Cancelar acordo',{action:'cancel',id:a.id},'O registro será preservado como cancelado e sairá dos compromissos ativos.')}</div>}
- {!locked&&owner&&['approved','delivered'].includes(a.status)&&<details className="border-t pt-3"><summary className="min-h-11 cursor-pointer py-2 text-sm underline">Reatribuir responsáveis</summary><form className="space-y-3" onSubmit={e=>submit(e,'reassign',{id:a.id})}>{person('Responsável pela entrega','assigneeId',a.assignee_id)}{person('Responsável pelo aceite','reviewerId',a.reviewer_id)}<p className="text-xs text-[#667064]">Ao trocar quem entrega, a nova pessoa precisará confirmar o acordo e registrar sua entrega. O valor e os critérios serão preservados.</p><button disabled={busy} className={button}>Salvar responsáveis</button></form></details>}
- {!locked&&a.status==='approved'&&a.agreed_at&&a.assignee_id===userId&&<form className="space-y-3 border-t pt-4" onSubmit={e=>submit(e,'deliver',{id:a.id})}>{area('Relato e links da entrega','evidence',a.evidence)}<button disabled={busy} className={primary}>Registrar entrega</button></form>}
- </article>)}{!agreements.length&&<p className="border p-6 text-sm">Nenhum acordo neste ciclo. Registre a primeira proposta antes de iniciar o trabalho.</p>}</div>
- </>:<>
- <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{[['Confirmados',confirmed],['Disponíveis',confirmed-spent],['Compromissos aprovados',approved],['Entregas aceitas',accepted],['Pagamentos registrados',spent],['Saldo a pagar',accepted-spent]].map(([label,value])=><div key={label as string} className="border bg-[#fbf8f1] p-4"><dt className="text-xs text-[#667064]">{label}</dt><dd className="mt-2 text-xl font-semibold">{fmt(value as number)}</dd></div>)}</dl><p className="text-sm">Propostas em negociação: {fmt(sum(agreements.filter((a:any)=>a.status==='proposed')))} · Recursos previstos: {fmt(sum(funds.filter((f:any)=>!f.confirmed)))}</p>{approved>confirmed&&<p className="border-l-4 border-[#d15d44] bg-[#fff4dd] p-4 text-sm">Há {fmt(approved-confirmed)} em compromissos aprovados sem cobertura confirmada.</p>}
- {owner&&!locked&&<button className={primary} onClick={()=>setForm(form==='fund'?'':'fund')}>+ Registrar recurso previsto</button>}
- {form==='fund'&&<form className={box} onSubmit={e=>submit(e,'fund')}><h3 className="font-serif text-2xl">Nova fonte de recurso</h3>{field('Nome da fonte','name')}{field('Valor previsto (R$)','amount')}{area('Origem, disponibilidade e autorização de uso','note')}<button disabled={busy} className={primary}>Salvar recurso previsto</button><button type="button" className={button} onClick={()=>setForm('')}>Cancelar</button></form>}
- <div className="space-y-3"><h3 className="font-serif text-2xl">Fontes de recurso</h3>{funds.map((f:any)=><article key={f.id} className={box}><div className="flex flex-wrap justify-between gap-3"><h4 className="font-semibold">{f.name}</h4><span className="text-sm">{f.confirmed?'Confirmado':'Previsto · fora do caixa'}</span></div><p className="whitespace-pre-wrap break-words text-sm">{f.note}</p><p>{fmt(f.amount)}{Boolean(f.confirmed)&&` · Disponível ${fmt(f.amount-used(f.id))}`}</p>{owner&&!locked&&!f.confirmed&&ask('Confirmar disponibilidade',{action:'confirm_fund',id:f.id},'Confirmo que este valor está disponível e autorizado para uso no ciclo. Ele passará a compor o caixa.')}{owner&&!locked&&<details><summary className="min-h-11 cursor-pointer py-2 text-sm underline">Corrigir recurso</summary><form className="space-y-3" onSubmit={e=>submit(e,'edit_fund',{id:f.id})}>{field('Nome da fonte','name',f.name)}{field('Valor total (R$)','amount',String(f.amount/100))}{area('Origem, condições e motivo da correção','note',f.note)}<p className="text-xs">O total não pode ficar abaixo dos pagamentos realizados com esta fonte.</p><button disabled={busy} className={button}>Salvar correção</button></form></details>}</article>)}{!funds.length&&<p className="border p-5 text-sm">Ainda não há recursos registrados neste ciclo.</p>}</div>
- <div className={box}><h3 className="font-serif text-2xl">Saldos por participante</h3><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr><th className="py-3">Pessoa</th><th className="px-3">Aceito</th><th className="px-3">Pago</th><th className="px-3">A pagar</th></tr></thead><tbody>{[...new Set(agreements.map((a:any)=>a.assignee_id))].map((id:any)=>{const list=agreements.filter((a:any)=>a.assignee_id===id&&a.status==='accepted'),recognized=sum(list),amount=list.reduce((n:number,a:any)=>n+paid(a.id),0);return <tr key={id} className="border-t"><th className="py-3 font-normal">{name(id)}</th><td className="whitespace-nowrap px-3">{fmt(recognized)}</td><td className="whitespace-nowrap px-3">{fmt(amount)}</td><td className="whitespace-nowrap px-3">{fmt(recognized-amount)}</td></tr>})}</tbody></table></div></div>
- {owner&&!locked&&agreements.some((a:any)=>a.status==='accepted'&&a.amount>paid(a.id))&&<form className={box} onSubmit={e=>submit(e,'payment',{clientId:paymentKey})}><h3 className="font-serif text-2xl">Registrar pagamento realizado</h3><p className="text-sm">Registre uma transferência já realizada. Este botão não movimenta dinheiro.</p><label className="block text-sm">Entrega aceita<select name="agreementId" className={input} required>{agreements.filter((a:any)=>a.status==='accepted'&&a.amount>paid(a.id)).map((a:any)=><option key={a.id} value={a.id}>{a.title} · Saldo {fmt(a.amount-paid(a.id))}</option>)}</select></label><label className="block text-sm">Fonte confirmada<select name="fundId" className={input} required><option value="">Selecione uma fonte</option>{funds.filter((f:any)=>f.confirmed&&f.amount>used(f.id)).map((f:any)=><option key={f.id} value={f.id}>{f.name} · {fmt(f.amount-used(f.id))} disponíveis</option>)}</select></label><div className="grid gap-4 sm:grid-cols-2">{field('Valor pago (R$)','amount')}{field('Data do pagamento','date','','date')}</div>{area('Referência ou comprovante do pagamento','note')}<button disabled={busy} className={primary}>Salvar registro de pagamento</button></form>}
- <div className="space-y-3"><h3 className="font-serif text-2xl">Pagamentos e correções</h3>{payments.map((p:any)=><article key={p.id} className={box}><h4 className="font-semibold">{agreements.find((a:any)=>a.id===p.agreement_id)?.title} · {fmt(p.amount)}</h4><p className="text-sm">{p.date} · {funds.find((f:any)=>f.id===p.fund_id)?.name}</p><p className="whitespace-pre-wrap break-words text-sm">{p.note}</p>{p.voided_at?<p className="text-sm">Registro estornado · {p.void_reason}</p>:owner&&!readOnly&&<details><summary className="min-h-11 cursor-pointer py-2 text-sm underline">Corrigir registro</summary><form className="space-y-3" onSubmit={e=>submit(e,'void_payment',{id:p.id})}>{area('Motivo do estorno contábil','reason')}<p className="text-xs">Preserva o histórico e devolve o valor aos saldos. Não desfaz a transferência bancária.</p><button disabled={busy} className={button}>Estornar registro</button></form></details>}</article>)}{!payments.length&&<p className="border p-5 text-sm">Nenhum pagamento registrado.</p>}</div>
- </>}
- </>}
- {review&&<div role="region" aria-label="Revisar registro" className="sticky bottom-3 z-10 border-2 border-[#244e35] bg-[#fff4dd] p-5 shadow-lg"><h3 className="font-semibold">{review.label}?</h3><p className="mt-2 text-sm">{review.description}</p><div className="mt-4 flex flex-wrap justify-end gap-3"><button disabled={busy} className={primary} onClick={()=>void act(review.payload)}>Confirmar registro</button><button disabled={busy} className={button} onClick={()=>setReview(null)}>Cancelar</button></div></div>}{notice&&<p role="status" className="border-l-4 border-[#244e35] p-3 text-sm">{notice}</p>}{error&&<p role="alert" className="border-l-4 border-red-800 bg-[#fff4dd] p-4 text-sm text-red-900">{error}</p>}
- </section>;
+import { useEffect, useState } from "react";
+const fmt = (n: number) =>
+  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n / 100);
+const labels: Record<string, string> = {
+  proposed: "Proposto",
+  approved: "Aprovado",
+  delivered: "Entregue",
+  accepted: "Aceito",
+  cancelled: "Cancelado",
+};
+const input = "mt-2 block min-h-11 w-full border border-[#a5ad9e] bg-white p-3";
+const box = "space-y-4 rounded-sm border border-[#c8c0b1] bg-[#fbf8f1] p-5";
+const button =
+  "inline-flex min-h-11 items-center justify-center border border-[#a5ad9e] px-4 py-2 text-sm disabled:opacity-40";
+const primary = button + " bg-[#244e35] text-white";
+export default function CircleWork({
+  circleId,
+  userId,
+  owner,
+  members,
+  view,
+  readOnly,
+}: {
+  circleId: number;
+  userId: string;
+  owner: boolean;
+  members: any[];
+  view: "agreements" | "resources";
+  readOnly: boolean;
+}) {
+  const [data, setData] = useState<any>(null),
+    [error, setError] = useState(""),
+    [busy, setBusy] = useState(false),
+    [selected, setSelected] = useState(""),
+    [form, setForm] = useState(""),
+    [editing, setEditing] = useState<any>(null),
+    [review, setReview] = useState<any>(null),
+    [notice, setNotice] = useState("");
+  const [paymentKey, setPaymentKey] = useState(() => crypto.randomUUID());
+  const endpoint = `/api/circles/${circleId}/work`;
+  async function load() {
+    const r = await fetch(endpoint, { cache: "no-store" });
+    const d = await r.json();
+    if (!r.ok) {
+      if ([401, 403, 404].includes(r.status)) setData(null);
+      throw Error(d.error);
+    }
+    setData(d);
+    setSelected((v) => v || String(d.cycles[0]?.id || ""));
+  }
+  useEffect(() => {
+    let alive = true;
+    void fetch(endpoint, { cache: "no-store" })
+      .then(async (r) => {
+        const d = await r.json();
+        if (!r.ok) throw Error(d.error);
+        if (alive) {
+          setData(d);
+          setSelected(String(d.cycles[0]?.id || ""));
+        }
+      })
+      .catch((e) => {
+        if (alive) setError(e.message);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [endpoint]);
+  async function act(payload: any) {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const r = await fetch(endpoint, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(payload),
+        }),
+        d = await r.json();
+      if (!r.ok) throw Error(d.error);
+      setForm("");
+      setEditing(null);
+      setReview(null);
+      setPaymentKey(crypto.randomUUID());
+      setNotice("Registro salvo.");
+      if (payload.action === "cycle") setSelected("");
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Tente novamente.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  function submit(e: React.FormEvent<HTMLFormElement>, action: string, extra: any = {}) {
+    e.preventDefault();
+    void act({
+      ...Object.fromEntries(new FormData(e.currentTarget)),
+      cycleId: Number(selected),
+      action,
+      ...extra,
+    });
+  }
+  function field(label: string, name: string, value = "", type = "text", required = true) {
+    return (
+      <label className="block text-sm">
+        {label}
+        <input
+          required={required}
+          name={name}
+          defaultValue={value}
+          type={type}
+          maxLength={type === "text" ? 160 : undefined}
+          className={input}
+        />
+      </label>
+    );
+  }
+  function area(label: string, name: string, value = "") {
+    return (
+      <label className="block text-sm">
+        {label}
+        <textarea
+          required
+          name={name}
+          defaultValue={value}
+          maxLength={4000}
+          rows={3}
+          className={input}
+        />
+      </label>
+    );
+  }
+  function person(label: string, name: string, value: string) {
+    return (
+      <label className="block text-sm">
+        {label}
+        <select name={name} defaultValue={value} className={input} required>
+          {members
+            .filter((m) => m.status === "active")
+            .map((m) => (
+              <option value={m.userId} key={m.userId}>
+                {m.name}
+              </option>
+            ))}
+        </select>
+      </label>
+    );
+  }
+  function ask(label: string, payload: any, description: string) {
+    return (
+      <button
+        className={button}
+        disabled={busy}
+        onClick={() => {
+          setError("");
+          setReview({ label, payload, description });
+        }}
+      >
+        {label}
+      </button>
+    );
+  }
+  const name = (id: string) => members.find((m) => m.userId === id)?.name || "Ex-participante";
+  if (!data)
+    return (
+      <section className={box}>
+        {error ? (
+          <p role="alert">{error}</p>
+        ) : (
+          <p role="status">Carregando registros do círculo…</p>
+        )}
+        <button className={button} onClick={() => void load().catch((e) => setError(e.message))}>
+          Tentar novamente
+        </button>
+      </section>
+    );
+  const cycle = data.cycles.find((c: any) => String(c.id) === selected),
+    locked = readOnly || cycle?.status === "closed",
+    agreements = data.agreements.filter((a: any) => String(a.cycle_id) === selected),
+    funds = data.funds.filter((f: any) => String(f.cycle_id) === selected),
+    payments = data.payments.filter((p: any) =>
+      agreements.some((a: any) => a.id === p.agreement_id),
+    ),
+    valid = payments.filter((p: any) => !p.voided_at);
+  const paid = (id: number) =>
+      valid
+        .filter((p: any) => p.agreement_id === id)
+        .reduce((sum: number, p: any) => sum + p.amount, 0),
+    used = (id: number) =>
+      valid.filter((p: any) => p.fund_id === id).reduce((sum: number, p: any) => sum + p.amount, 0);
+  const sum = (list: any[]) => list.reduce((n: number, a: any) => n + a.amount, 0),
+    confirmed = sum(funds.filter((f: any) => f.confirmed)),
+    spent = sum(valid),
+    accepted = sum(agreements.filter((a: any) => a.status === "accepted")),
+    approved = sum(
+      agreements.filter((a: any) => ["approved", "delivered", "accepted"].includes(a.status)),
+    );
+  return (
+    <section data-no-translate className="space-y-6">
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h2 className="font-serif text-3xl">
+            {view === "agreements" ? "Acordos de trabalho" : "Recursos e saldos"}
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#667064]">
+            {view === "agreements"
+              ? "Combine o escopo e o valor antes de trabalhar. Proponha, aprove, entregue e registre o aceite."
+              : "Recursos previstos ficam separados do caixa confirmado. Os pagamentos são registros manuais e não executam transferências."}
+          </p>
+        </div>
+        <a className={button} href={endpoint + "?export=1"}>
+          Exportar registros
+        </a>
+      </header>
+      <div className="flex flex-wrap items-end gap-3">
+        {data.cycles.length > 0 && (
+          <label className="min-w-0 flex-1 text-sm">
+            Ciclo de trabalho
+            <select
+              value={selected}
+              onChange={(e) => {
+                setSelected(e.target.value);
+                setForm("");
+                setEditing(null);
+                setReview(null);
+              }}
+              className={input}
+            >
+              {data.cycles.map((c: any) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} · {c.status === "open" ? "Aberto" : "Encerrado"}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {owner && !readOnly && (
+          <button
+            className={button}
+            onClick={() => {
+              setForm(form === "cycle" ? "" : "cycle");
+              setEditing(null);
+            }}
+          >
+            Novo ciclo
+          </button>
+        )}
+      </div>
+      {form === "cycle" && (
+        <form className={box} onSubmit={(e) => submit(e, "cycle")}>
+          <h3 className="font-serif text-2xl">Planejar ciclo</h3>
+          {field("Nome do ciclo", "name")}
+          {area("Objetivo", "goal")}
+          <div className="grid gap-4 sm:grid-cols-2">
+            {field("Início", "start", "", "date")}
+            {field("Fim", "end", "", "date")}
+          </div>
+          <button disabled={busy} className={primary}>
+            Criar ciclo
+          </button>
+          <button type="button" className={button} onClick={() => setForm("")}>
+            Cancelar
+          </button>
+        </form>
+      )}
+      {!cycle ? (
+        <p className="border p-6 text-sm">
+          {owner
+            ? "Crie o primeiro ciclo para organizar acordos e recursos."
+            : "O responsável ainda não abriu um ciclo de trabalho."}
+        </p>
+      ) : (
+        <>
+          <div className="border-l-4 border-[#f0c64b] pl-4">
+            <h3 className="font-semibold">{cycle.name}</h3>
+            <p className="mt-1 whitespace-pre-wrap text-sm">{cycle.goal}</p>
+            <p className="mt-2 text-xs">
+              {cycle.start} → {cycle.end} · {cycle.status === "closed" ? "Encerrado" : "Aberto"}
+            </p>
+            {owner && !readOnly && (
+              <div className="mt-3">
+                {ask(
+                  cycle.status === "closed" ? "Reabrir ciclo" : "Encerrar ciclo",
+                  {
+                    action: "cycle_status",
+                    cycleId: cycle.id,
+                    status: cycle.status === "closed" ? "open" : "closed",
+                  },
+                  "O encerramento preserva os registros e impede alterações. Acordos em execução e saldos a pagar precisam ser resolvidos antes.",
+                )}
+              </div>
+            )}
+          </div>
+          {view === "agreements" ? (
+            <>
+              {!locked && (
+                <button
+                  className={primary}
+                  onClick={() => {
+                    setForm(form === "proposal" ? "" : "proposal");
+                    setEditing(null);
+                  }}
+                >
+                  + Propor trabalho
+                </button>
+              )}
+              {form === "proposal" && (
+                <form
+                  key={editing?.id || "new"}
+                  className={box}
+                  onSubmit={(e) =>
+                    submit(
+                      e,
+                      editing ? "edit_proposal" : "proposal",
+                      editing ? { id: editing.id } : {},
+                    )
+                  }
+                >
+                  <h3 className="font-serif text-2xl">
+                    {editing ? "Editar proposta" : "Nova proposta"}
+                  </h3>
+                  {field("Título do trabalho", "title", editing?.title)}
+                  {field("Papel ou tipo de contribuição", "role", editing?.role, "text", false)}
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {person(
+                      "Responsável pela entrega",
+                      "assigneeId",
+                      editing?.assignee_id || userId,
+                    )}
+                    {person(
+                      "Responsável pelo aceite",
+                      "reviewerId",
+                      editing?.reviewer_id || data.circle.ownerId,
+                    )}
+                  </div>
+                  {area("Escopo: o que será entregue", "scope", editing?.scope)}
+                  {area("Critérios de aceite", "criteria", editing?.criteria)}
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {field(
+                      "Valor proposto (R$; use 0 se voluntário)",
+                      "amount",
+                      editing ? String(editing.amount / 100) : "0",
+                    )}
+                    {field("Prazo de entrega", "due", editing?.due || cycle.end, "date")}
+                  </div>
+                  {area(
+                    "Condições de pagamento ou contribuição voluntária",
+                    "terms",
+                    editing?.terms,
+                  )}
+                  <p className="text-xs text-[#667064]">
+                    Uma proposta ainda não é um compromisso. Após aprovação, escopo e valor ficam
+                    preservados.
+                  </p>
+                  <div className="flex gap-3">
+                    <button disabled={busy} className={primary}>
+                      Salvar proposta
+                    </button>
+                    <button
+                      type="button"
+                      className={button}
+                      onClick={() => {
+                        setForm("");
+                        setEditing(null);
+                      }}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              )}
+              <div className="space-y-4">
+                {agreements.map((a: any) => (
+                  <article key={a.id} className={box}>
+                    <div className="flex flex-wrap justify-between gap-3">
+                      <h3 className="min-w-0 break-words font-serif text-2xl">{a.title}</h3>
+                      <span className="border px-3 py-1 text-sm">
+                        {labels[a.status]}
+                        {a.status === "accepted" && a.amount > 0
+                          ? paid(a.id) === a.amount
+                            ? " · Quitado"
+                            : paid(a.id) > 0
+                              ? " · Pago em parte"
+                              : " · A pagar"
+                          : ""}
+                      </span>
+                    </div>
+                    <p className="text-sm">
+                      {name(a.assignee_id)}
+                      {a.role ? " · " + a.role : ""} · Prazo {a.due}
+                    </p>
+                    <p className="whitespace-pre-wrap break-words">{a.scope}</p>
+                    <details>
+                      <summary className="min-h-11 cursor-pointer py-2 text-sm underline">
+                        Critérios e condições do acordo
+                      </summary>
+                      <dl className="space-y-3 text-sm">
+                        <div>
+                          <dt className="font-semibold">Critérios de aceite</dt>
+                          <dd className="whitespace-pre-wrap break-words">{a.criteria}</dd>
+                        </div>
+                        <div>
+                          <dt className="font-semibold">Condições</dt>
+                          <dd className="whitespace-pre-wrap break-words">{a.terms}</dd>
+                        </div>
+                        <div>
+                          <dt className="font-semibold">Quem dá o aceite</dt>
+                          <dd>{name(a.reviewer_id)}</dd>
+                        </div>
+                      </dl>
+                    </details>
+                    {a.evidence && (
+                      <div>
+                        <h4 className="text-sm font-semibold">Evidência da entrega</h4>
+                        <p className="whitespace-pre-wrap break-words text-sm">{a.evidence}</p>
+                      </div>
+                    )}
+                    <p className="text-lg font-semibold">
+                      {fmt(a.amount)}{" "}
+                      <span className="text-sm font-normal">
+                        · Pago {fmt(paid(a.id))}
+                        {a.status === "accepted" && ` · Saldo ${fmt(a.amount - paid(a.id))}`}
+                      </span>
+                    </p>
+                    {!locked && (
+                      <div className="flex flex-wrap gap-3">
+                        {a.status === "proposed" && (owner || a.creator_id === userId) && (
+                          <button
+                            className={button}
+                            onClick={() => {
+                              setEditing(a);
+                              setForm("proposal");
+                            }}
+                          >
+                            Editar proposta
+                          </button>
+                        )}
+                        {a.status === "proposed" &&
+                          owner &&
+                          ask(
+                            "Aprovar proposta",
+                            { action: "approve", id: a.id },
+                            `${a.title} · ${name(a.assignee_id)} · ${fmt(a.amount)}. Revise os critérios e as condições antes de aprovar.`,
+                          )}
+                        {a.status === "approved" &&
+                          a.assignee_id === userId &&
+                          !a.agreed_at &&
+                          ask(
+                            "Concordo com o trabalho",
+                            { action: "agree", id: a.id },
+                            "Confirmo o escopo, os critérios, o prazo e as condições deste acordo.",
+                          )}
+                        {a.status === "approved" && a.agreed_at && (
+                          <span className="self-center text-xs">Participação confirmada</span>
+                        )}
+                        {a.status === "delivered" && a.reviewer_id === userId && (
+                          <>
+                            {ask(
+                              "Aceitar entrega",
+                              { action: "accept", id: a.id },
+                              `Confirmo que a evidência atende aos critérios de ${a.title}. O valor reconhecido será ${fmt(a.amount)}.`,
+                            )}
+                            {ask(
+                              "Devolver para ajuste",
+                              { action: "return_delivery", id: a.id },
+                              "O acordo voltará à etapa de execução para uma nova entrega.",
+                            )}
+                          </>
+                        )}
+                        {!["accepted", "cancelled"].includes(a.status) &&
+                          (owner || (a.status === "proposed" && a.creator_id === userId)) &&
+                          ask(
+                            "Cancelar acordo",
+                            { action: "cancel", id: a.id },
+                            "O registro será preservado como cancelado e sairá dos compromissos ativos.",
+                          )}
+                      </div>
+                    )}
+                    {!locked && owner && ["approved", "delivered"].includes(a.status) && (
+                      <details className="border-t pt-3">
+                        <summary className="min-h-11 cursor-pointer py-2 text-sm underline">
+                          Reatribuir responsáveis
+                        </summary>
+                        <form
+                          className="space-y-3"
+                          onSubmit={(e) => submit(e, "reassign", { id: a.id })}
+                        >
+                          {person("Responsável pela entrega", "assigneeId", a.assignee_id)}
+                          {person("Responsável pelo aceite", "reviewerId", a.reviewer_id)}
+                          <p className="text-xs text-[#667064]">
+                            Ao trocar quem entrega, a nova pessoa precisará confirmar o acordo e
+                            registrar sua entrega. O valor e os critérios serão preservados.
+                          </p>
+                          <button disabled={busy} className={button}>
+                            Salvar responsáveis
+                          </button>
+                        </form>
+                      </details>
+                    )}
+                    {!locked &&
+                      a.status === "approved" &&
+                      a.agreed_at &&
+                      a.assignee_id === userId && (
+                        <form
+                          className="space-y-3 border-t pt-4"
+                          onSubmit={(e) => submit(e, "deliver", { id: a.id })}
+                        >
+                          {area("Relato e links da entrega", "evidence", a.evidence)}
+                          <button disabled={busy} className={primary}>
+                            Registrar entrega
+                          </button>
+                        </form>
+                      )}
+                  </article>
+                ))}
+                {!agreements.length && (
+                  <p className="border p-6 text-sm">
+                    Nenhum acordo neste ciclo. Registre a primeira proposta antes de iniciar o
+                    trabalho.
+                  </p>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {[
+                  ["Confirmados", confirmed],
+                  ["Disponíveis", confirmed - spent],
+                  ["Compromissos aprovados", approved],
+                  ["Entregas aceitas", accepted],
+                  ["Pagamentos registrados", spent],
+                  ["Saldo a pagar", accepted - spent],
+                ].map(([label, value]) => (
+                  <div key={label as string} className="border bg-[#fbf8f1] p-4">
+                    <dt className="text-xs text-[#667064]">{label}</dt>
+                    <dd className="mt-2 text-xl font-semibold">{fmt(value as number)}</dd>
+                  </div>
+                ))}
+              </dl>
+              <p className="text-sm">
+                Propostas em negociação:{" "}
+                {fmt(sum(agreements.filter((a: any) => a.status === "proposed")))} · Recursos
+                previstos: {fmt(sum(funds.filter((f: any) => !f.confirmed)))}
+              </p>
+              {approved > confirmed && (
+                <p className="border-l-4 border-[#d15d44] bg-[#fff4dd] p-4 text-sm">
+                  Há {fmt(approved - confirmed)} em compromissos aprovados sem cobertura confirmada.
+                </p>
+              )}
+              {owner && !locked && (
+                <button className={primary} onClick={() => setForm(form === "fund" ? "" : "fund")}>
+                  + Registrar recurso previsto
+                </button>
+              )}
+              {form === "fund" && (
+                <form className={box} onSubmit={(e) => submit(e, "fund")}>
+                  <h3 className="font-serif text-2xl">Nova fonte de recurso</h3>
+                  {field("Nome da fonte", "name")}
+                  {field("Valor previsto (R$)", "amount")}
+                  {area("Origem, disponibilidade e autorização de uso", "note")}
+                  <button disabled={busy} className={primary}>
+                    Salvar recurso previsto
+                  </button>
+                  <button type="button" className={button} onClick={() => setForm("")}>
+                    Cancelar
+                  </button>
+                </form>
+              )}
+              <div className="space-y-3">
+                <h3 className="font-serif text-2xl">Fontes de recurso</h3>
+                {funds.map((f: any) => (
+                  <article key={f.id} className={box}>
+                    <div className="flex flex-wrap justify-between gap-3">
+                      <h4 className="font-semibold">{f.name}</h4>
+                      <span className="text-sm">
+                        {f.confirmed ? "Confirmado" : "Previsto · fora do caixa"}
+                      </span>
+                    </div>
+                    <p className="whitespace-pre-wrap break-words text-sm">{f.note}</p>
+                    <p>
+                      {fmt(f.amount)}
+                      {Boolean(f.confirmed) && ` · Disponível ${fmt(f.amount - used(f.id))}`}
+                    </p>
+                    {owner &&
+                      !locked &&
+                      !f.confirmed &&
+                      ask(
+                        "Confirmar disponibilidade",
+                        { action: "confirm_fund", id: f.id },
+                        "Confirmo que este valor está disponível e autorizado para uso no ciclo. Ele passará a compor o caixa.",
+                      )}
+                    {owner && !locked && (
+                      <details>
+                        <summary className="min-h-11 cursor-pointer py-2 text-sm underline">
+                          Corrigir recurso
+                        </summary>
+                        <form
+                          className="space-y-3"
+                          onSubmit={(e) => submit(e, "edit_fund", { id: f.id })}
+                        >
+                          {field("Nome da fonte", "name", f.name)}
+                          {field("Valor total (R$)", "amount", String(f.amount / 100))}
+                          {area("Origem, condições e motivo da correção", "note", f.note)}
+                          <p className="text-xs">
+                            O total não pode ficar abaixo dos pagamentos realizados com esta fonte.
+                          </p>
+                          <button disabled={busy} className={button}>
+                            Salvar correção
+                          </button>
+                        </form>
+                      </details>
+                    )}
+                  </article>
+                ))}
+                {!funds.length && (
+                  <p className="border p-5 text-sm">
+                    Ainda não há recursos registrados neste ciclo.
+                  </p>
+                )}
+              </div>
+              <div className={box}>
+                <h3 className="font-serif text-2xl">Saldos por participante</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead>
+                      <tr>
+                        <th className="py-3">Pessoa</th>
+                        <th className="px-3">Aceito</th>
+                        <th className="px-3">Pago</th>
+                        <th className="px-3">A pagar</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...new Set(agreements.map((a: any) => a.assignee_id))].map((id: any) => {
+                        const list = agreements.filter(
+                            (a: any) => a.assignee_id === id && a.status === "accepted",
+                          ),
+                          recognized = sum(list),
+                          amount = list.reduce((n: number, a: any) => n + paid(a.id), 0);
+                        return (
+                          <tr key={id} className="border-t">
+                            <th className="py-3 font-normal">{name(id)}</th>
+                            <td className="whitespace-nowrap px-3">{fmt(recognized)}</td>
+                            <td className="whitespace-nowrap px-3">{fmt(amount)}</td>
+                            <td className="whitespace-nowrap px-3">{fmt(recognized - amount)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              {owner &&
+                !locked &&
+                agreements.some((a: any) => a.status === "accepted" && a.amount > paid(a.id)) && (
+                  <form
+                    className={box}
+                    onSubmit={(e) => submit(e, "payment", { clientId: paymentKey })}
+                  >
+                    <h3 className="font-serif text-2xl">Registrar pagamento realizado</h3>
+                    <p className="text-sm">
+                      Registre uma transferência já realizada. Este botão não movimenta dinheiro.
+                    </p>
+                    <label className="block text-sm">
+                      Entrega aceita
+                      <select name="agreementId" className={input} required>
+                        {agreements
+                          .filter((a: any) => a.status === "accepted" && a.amount > paid(a.id))
+                          .map((a: any) => (
+                            <option key={a.id} value={a.id}>
+                              {a.title} · Saldo {fmt(a.amount - paid(a.id))}
+                            </option>
+                          ))}
+                      </select>
+                    </label>
+                    <label className="block text-sm">
+                      Fonte confirmada
+                      <select name="fundId" className={input} required>
+                        <option value="">Selecione uma fonte</option>
+                        {funds
+                          .filter((f: any) => f.confirmed && f.amount > used(f.id))
+                          .map((f: any) => (
+                            <option key={f.id} value={f.id}>
+                              {f.name} · {fmt(f.amount - used(f.id))} disponíveis
+                            </option>
+                          ))}
+                      </select>
+                    </label>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {field("Valor pago (R$)", "amount")}
+                      {field("Data do pagamento", "date", "", "date")}
+                    </div>
+                    {area("Referência ou comprovante do pagamento", "note")}
+                    <button disabled={busy} className={primary}>
+                      Salvar registro de pagamento
+                    </button>
+                  </form>
+                )}
+              <div className="space-y-3">
+                <h3 className="font-serif text-2xl">Pagamentos e correções</h3>
+                {payments.map((p: any) => (
+                  <article key={p.id} className={box}>
+                    <h4 className="font-semibold">
+                      {agreements.find((a: any) => a.id === p.agreement_id)?.title} ·{" "}
+                      {fmt(p.amount)}
+                    </h4>
+                    <p className="text-sm">
+                      {p.date} · {funds.find((f: any) => f.id === p.fund_id)?.name}
+                    </p>
+                    <p className="whitespace-pre-wrap break-words text-sm">{p.note}</p>
+                    {p.voided_at ? (
+                      <p className="text-sm">Registro estornado · {p.void_reason}</p>
+                    ) : (
+                      owner &&
+                      !readOnly && (
+                        <details>
+                          <summary className="min-h-11 cursor-pointer py-2 text-sm underline">
+                            Corrigir registro
+                          </summary>
+                          <form
+                            className="space-y-3"
+                            onSubmit={(e) => submit(e, "void_payment", { id: p.id })}
+                          >
+                            {area("Motivo do estorno contábil", "reason")}
+                            <p className="text-xs">
+                              Preserva o histórico e devolve o valor aos saldos. Não desfaz a
+                              transferência bancária.
+                            </p>
+                            <button disabled={busy} className={button}>
+                              Estornar registro
+                            </button>
+                          </form>
+                        </details>
+                      )
+                    )}
+                  </article>
+                ))}
+                {!payments.length && (
+                  <p className="border p-5 text-sm">Nenhum pagamento registrado.</p>
+                )}
+              </div>
+            </>
+          )}
+        </>
+      )}
+      {review && (
+        <div
+          role="region"
+          aria-label="Revisar registro"
+          className="sticky bottom-3 z-10 border-2 border-[#244e35] bg-[#fff4dd] p-5 shadow-lg"
+        >
+          <h3 className="font-semibold">{review.label}?</h3>
+          <p className="mt-2 text-sm">{review.description}</p>
+          <div className="mt-4 flex flex-wrap justify-end gap-3">
+            <button disabled={busy} className={primary} onClick={() => void act(review.payload)}>
+              Confirmar registro
+            </button>
+            <button disabled={busy} className={button} onClick={() => setReview(null)}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+      {notice && (
+        <p role="status" className="border-l-4 border-[#244e35] p-3 text-sm">
+          {notice}
+        </p>
+      )}
+      {error && (
+        <p role="alert" className="border-l-4 border-red-800 bg-[#fff4dd] p-4 text-sm text-red-900">
+          {error}
+        </p>
+      )}
+    </section>
+  );
 }
